@@ -5,10 +5,16 @@ let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
   if (!process.env.SMTP_HOST) {
-    // No SMTP configured yet — return a stub that logs to console.
+    // No SMTP configured yet — log the full envelope so dev/staging can grab
+    // password-reset links from `pm2 logs` instead of needing a real inbox.
     transporter = {
       sendMail: async (opts) => {
-        console.log('[mail:stub] would send:', { to: opts.to, subject: opts.subject });
+        console.log('[mail:stub] would send →', opts.to);
+        console.log('             subject :', opts.subject);
+        if (opts.text) {
+          console.log('             body    :');
+          opts.text.split('\n').forEach((line) => console.log('               ', line));
+        }
         return { messageId: 'stub' };
       },
     };

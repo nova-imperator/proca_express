@@ -11,6 +11,7 @@ import AdminDashboard from './pages/admin/Dashboard.jsx';
 import AdminUsers from './pages/admin/Users.jsx';
 import AddUser from './pages/admin/AddUser.jsx';
 import EditUser from './pages/admin/EditUser.jsx';
+import RegisterRequests from './pages/admin/RegisterRequests.jsx';
 
 function UserOnly({ children }) {
   const { user, loading } = useAuth();
@@ -55,6 +56,14 @@ export default function App() {
         element={
           <AdminOnly>
             <AdminUsers />
+          </AdminOnly>
+        }
+      />
+      <Route
+        path="/admin/register-requests"
+        element={
+          <AdminOnly>
+            <RegisterRequests />
           </AdminOnly>
         }
       />

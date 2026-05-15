@@ -31,11 +31,15 @@ router.post('/login', async (req, res) => {
   const captcha = await verifyCaptcha(req.body?.recaptcha_token, req.ip);
   if (!captcha.ok) return res.status(400).json({ error: 'captcha_failed' });
 
+  // Match by email (case-insensitive) OR by mobile, comparing the digits only
+  // on both sides so "+91 8929023900" and "8929023900" both work.
+  const digitsOnly = identifier.replace(/\D/g, '');
   const { rows } = await query(
     `SELECT id, email, mobile, full_name, password_hash, is_active FROM users
-       WHERE LOWER(email) = $1 OR mobile = $1
+       WHERE LOWER(email) = $1
+          OR regexp_replace(mobile, '\\D', '', 'g') = $2
        LIMIT 1`,
-    [identifier]
+    [identifier, digitsOnly]
   );
   const user = rows[0];
   if (!user || !user.is_active || !(await bcrypt.compare(password, user.password_hash))) {

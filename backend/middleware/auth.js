@@ -3,18 +3,17 @@ const jwt = require('jsonwebtoken');
 const USER_COOKIE = 'pe_user';
 const ADMIN_COOKIE = 'pe_admin';
 
+// Cookie `Secure` MUST be tied to whether the site actually serves over TLS,
+// not to NODE_ENV. Browsers silently drop Secure cookies on http:// pages, so
+// `secure: true` on a not-yet-HTTPS prod box means nobody stays logged in.
+// Set COOKIE_SECURE=true in .env once TLS is in front (Certbot/nginx on 443).
+const cookieSecure = String(process.env.COOKIE_SECURE || '').toLowerCase() === 'true';
+
 function cookieOptions() {
-  const inProd = process.env.NODE_ENV === 'production';
   return {
     httpOnly: true,
-    // In prod the frontend (React build) is served by nginx on the same origin,
-    // so SameSite=Lax is enough. For cross-origin dev (http://localhost:3000 →
-    // http://localhost:5000), the browser would require SameSite=None+Secure,
-    // but Secure won't work on plain http — so during local dev we set Lax and
-    // rely on the Vite proxy (configured in frontend/vite.config.js) to keep
-    // everything same-origin.
     sameSite: 'lax',
-    secure: inProd,
+    secure: cookieSecure,
     signed: true,
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/',
@@ -36,8 +35,11 @@ function setAdminCookie(res, admin) {
 }
 
 function clearAuthCookies(res) {
-  res.clearCookie(USER_COOKIE, { path: '/' });
-  res.clearCookie(ADMIN_COOKIE, { path: '/' });
+  // Clear options must mirror the Set-Cookie options the browser stored, or
+  // the clear is ignored. `secure` and `sameSite` must match.
+  const opts = { path: '/', sameSite: 'lax', secure: cookieSecure };
+  res.clearCookie(USER_COOKIE, opts);
+  res.clearCookie(ADMIN_COOKIE, opts);
 }
 
 function verify(token) {
@@ -48,7 +50,6 @@ function verify(token) {
   }
 }
 
-// Reads cookies and populates req.user / req.admin if tokens are valid.
 function attachUser(req, _res, next) {
   const userTok = req.signedCookies?.[USER_COOKIE];
   const adminTok = req.signedCookies?.[ADMIN_COOKIE];

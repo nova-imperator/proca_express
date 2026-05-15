@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const router = express.Router();
 
-const { query } = require('../config/db');
+const { query, pool } = require('../config/db');
 const {
   requireAdmin,
   setAdminCookie,
@@ -51,13 +51,93 @@ router.use(requireAdmin);
 
 // GET /api/admin/stats
 router.get('/stats', async (_req, res) => {
-  const { rows } = await query(`
-    SELECT
-      (SELECT COUNT(*)::int FROM users WHERE is_active) AS active_users,
-      (SELECT COUNT(*)::int FROM register_requests WHERE status = 'pending') AS pending_requests,
-      (SELECT COUNT(*)::int FROM devices) AS device_count
-  `);
-  res.json({ stats: rows[0] });
+  const [s, recent] = await Promise.all([
+    query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM users WHERE is_active) AS active_users,
+        (SELECT COUNT(*)::int FROM register_requests WHERE status = 'pending') AS pending_requests,
+        (SELECT COUNT(*)::int FROM devices) AS device_count
+    `),
+    query(`
+      SELECT id, email, mobile, full_name, status, created_at
+        FROM register_requests
+        WHERE status = 'pending'
+        ORDER BY created_at DESC
+        LIMIT 5
+    `),
+  ]);
+  res.json({ stats: s.rows[0], recent_requests: recent.rows });
+});
+
+// ---------- Register requests ----------
+
+// GET /api/admin/register-requests?status=pending|approved|rejected|all
+router.get('/register-requests', async (req, res) => {
+  const status = String(req.query.status || 'all');
+  const allowed = ['pending', 'approved', 'rejected', 'all'];
+  if (!allowed.includes(status)) return res.status(400).json({ error: 'bad_status' });
+
+  const sql = status === 'all'
+    ? `SELECT * FROM register_requests ORDER BY created_at DESC`
+    : `SELECT * FROM register_requests WHERE status = $1 ORDER BY created_at DESC`;
+  const args = status === 'all' ? [] : [status];
+
+  const { rows } = await query(sql, args);
+  res.json({ register_requests: rows });
+});
+
+// POST /api/admin/register-requests/:id/reject
+router.post('/register-requests/:id/reject', async (req, res) => {
+  const { rows } = await query(
+    `UPDATE register_requests SET status = 'rejected'
+       WHERE id = $1 AND status = 'pending'
+       RETURNING id, status`,
+    [req.params.id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'not_found_or_not_pending' });
+  res.json({ ok: true, request: rows[0] });
+});
+
+// POST /api/admin/register-requests/:id/approve   body: { password }
+// Creates a user from the request, marks the request approved — atomically.
+// Admin supplies the password (we never auto-generate, since there's no
+// vetted channel to deliver one).
+router.post('/register-requests/:id/approve', async (req, res) => {
+  const password = String(req.body?.password || '');
+  if (password.length < 8) return res.status(400).json({ error: 'password_too_short' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await client.query(
+      `SELECT id, email, mobile, full_name, designation, company_name, company_gst, status
+         FROM register_requests WHERE id = $1 FOR UPDATE`,
+      [req.params.id]
+    );
+    const rr = r.rows[0];
+    if (!rr) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'not_found' }); }
+    if (rr.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'already_processed' });
+    }
+
+    const hash = await bcrypt.hash(password, 12);
+    const created = await client.query(
+      `INSERT INTO users (email, mobile, password_hash, full_name, designation, company_name, company_gst)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, email, mobile, full_name`,
+      [rr.email, rr.mobile, hash, rr.full_name, rr.designation, rr.company_name, rr.company_gst]
+    );
+    await client.query(`UPDATE register_requests SET status = 'approved' WHERE id = $1`, [rr.id]);
+    await client.query('COMMIT');
+    res.status(201).json({ ok: true, user: created.rows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (err.code === '23505') return res.status(409).json({ error: 'duplicate_email_or_mobile' });
+    throw err;
+  } finally {
+    client.release();
+  }
 });
 
 // GET /api/admin/users
