@@ -1,0 +1,43 @@
+Link - https://tracking.procaexpress.in/
+
+User Interface,
+Page 1 - Home Screen https://tracking.procaexpress.in/
+Details - Need to implement login form for user to login & Basic details as part of designing
+Input - Email/PhoneNo. & Password (required)
+Note: Add forgot password link ()
+
+Page 2 - Register Request Screen https://tracking.procaexpress.in/register-request
+Details - Need to implement contact form for getting user details
+Integration - Don’t have an account? (link) on Login Screen
+Input - Email ID (required), Mobile No. (required), Full name, Designation, Company name, Company GST
+Note: Send email after form submission, Store in database & Integrate Google Capache
+
+Page 3 - Forgot Password
+Details - Need to implement popup and provide email information
+Integration - Forgot password (link) on Login Screen
+
+Page 4 - User Dashboard Screen https://tracking.procaexpress.in/home
+Details - Need to implement a blank screen for now, later device details will be displayed.
+Note: URL needs to be handle for non logged in user
+
+Admin Interface,
+Page 1 - Login Screen https://tracking.procaexpress.in/admin
+Details - Need to implement login form for admin to login
+Input - Email & Password (required)
+
+Page 2 - Dashboard Screen https://tracking.procaexpress.in/admin/home
+Details - Need to display 2-3 counts (No. of Active User, No. of Register Request, No. of Devices)
+Note: URL needs to be handle for non logged in user
+
+Page 3 - User Management Screen https://tracking.procaexpress.in/admin/users
+Details - Need to display all list of users
+Integration - Column (Name | Email | Mobile No. | Action) (Action - Edit | Manage User | Delete)
+Note: URL needs to be handle for non logged in user
+
+Page 4 - Add User Screen https://tracking.procaexpress.in/admin/add-user
+Details - Need to implement form to add user
+Input - Email ID (required), Mobile No. (required), Password (required), Confirm Password (required), Full name, Designation, Company name, Company GST
+Note: Store in database
+Note: URL needs to be handle for non logged in user
+Page 5 -  Edit User Screen https://tracking.procaexpress.in/admin/edit-user/{id}
+

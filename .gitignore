@@ -1,0 +1,18 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.claude/
+*.log
+npm-debug.log*
+.DS_Store
+.idea/
+.vscode/
+dist/
+coverage/
+
+# Credentials and secrets — never commit these.
+*.pem
+*.key
+*.ppk
+developer-team_credentials.csv

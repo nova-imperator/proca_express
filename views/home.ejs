@@ -1,0 +1,13 @@
+<%- include('partials/head') %>
+<%- include('partials/user-nav') %>
+
+<main class="container">
+  <h1>Welcome<%= me && me.full_name ? ', ' + me.full_name : '' %></h1>
+  <p class="muted">Your devices will appear here once they're provisioned.</p>
+
+  <div class="card empty-state">
+    <p>No devices yet.</p>
+  </div>
+</main>
+
+<%- include('partials/foot') %>
