@@ -5,6 +5,7 @@ const router = express.Router();
 
 const { query } = require('../config/db');
 const { setUserCookie, clearAuthCookies } = require('../middleware/auth');
+const { verify: verifyCaptcha } = require('../utils/recaptcha');
 const mailer = require('../utils/mailer');
 
 // GET /api/auth/me
@@ -18,7 +19,7 @@ router.get('/me', async (req, res) => {
   res.json({ user: rows[0] });
 });
 
-// POST /api/auth/login   body: { identifier, password }
+// POST /api/auth/login   body: { identifier, password, recaptcha_token? }
 router.post('/login', async (req, res) => {
   const identifier = String(req.body?.identifier || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
@@ -26,6 +27,9 @@ router.post('/login', async (req, res) => {
   if (!identifier || !password) {
     return res.status(400).json({ error: 'missing_fields' });
   }
+
+  const captcha = await verifyCaptcha(req.body?.recaptcha_token, req.ip);
+  if (!captcha.ok) return res.status(400).json({ error: 'captcha_failed' });
 
   const { rows } = await query(
     `SELECT id, email, mobile, full_name, password_hash, is_active FROM users

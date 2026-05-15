@@ -10,6 +10,7 @@ const publicRoutes = require('./routes/public');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const adminRoutes = require('./routes/admin');
+const configRoutes = require('./routes/config');
 const { attachUser } = require('./middleware/auth');
 
 const app = express();
@@ -45,6 +46,7 @@ app.use(['/api/auth', '/api/admin/auth', '/api/register-request'], authLimiter);
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
+app.use('/api', configRoutes);
 app.use('/api', publicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', userRoutes);

@@ -21,7 +21,11 @@ export default function EditUser() {
     return (
       <>
         <AdminNav />
-        <main className="container narrow"><h1>Not found</h1></main>
+        <main className="container narrow">
+          <h1 className="page-title">User not found</h1>
+          <p className="page-sub">The user you were looking for has been removed or never existed.</p>
+          <Link className="btn" to="/admin/users">← Back to users</Link>
+        </main>
       </>
     );
   }
@@ -49,7 +53,8 @@ export default function EditUser() {
     <>
       <AdminNav />
       <main className="container narrow">
-        <h1>Edit user</h1>
+        <h1 className="page-title">Edit user</h1>
+        <p className="page-sub">User #{user.id} · created {new Date(user.created_at).toLocaleDateString()}</p>
         {error && <div className="notice error">{error}</div>}
         <form onSubmit={onSubmit} className="card">
           <label>Email
@@ -72,11 +77,11 @@ export default function EditUser() {
           </label>
           <label className="checkbox">
             <input type="checkbox" checked={!!user.is_active} onChange={onChange('is_active')} />
-            Active
+            Account active
           </label>
           <div className="row">
             <button className="btn primary" type="submit" disabled={pending}>
-              {pending ? 'Saving…' : 'Save'}
+              {pending ? <><span className="spin" /> Saving…</> : 'Save changes'}
             </button>
             <Link className="btn" to="/admin/users">Cancel</Link>
           </div>

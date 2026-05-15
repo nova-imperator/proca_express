@@ -8,6 +8,7 @@ const {
   setAdminCookie,
   clearAuthCookies,
 } = require('../middleware/auth');
+const { verify: verifyCaptcha } = require('../utils/recaptcha');
 
 // ---------- Admin auth ----------
 
@@ -19,12 +20,15 @@ router.get('/auth/me', async (req, res) => {
   res.json({ admin: rows[0] });
 });
 
-// POST /api/admin/auth/login   body: { email, password }
+// POST /api/admin/auth/login   body: { email, password, recaptcha_token? }
 router.post('/auth/login', async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
 
   if (!email || !password) return res.status(400).json({ error: 'missing_fields' });
+
+  const captcha = await verifyCaptcha(req.body?.recaptcha_token, req.ip);
+  if (!captcha.ok) return res.status(400).json({ error: 'captcha_failed' });
 
   const { rows } = await query('SELECT id, email, password_hash FROM admins WHERE email = $1 LIMIT 1', [email]);
   const admin = rows[0];

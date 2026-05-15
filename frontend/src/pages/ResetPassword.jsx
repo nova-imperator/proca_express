@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import UserNav from '../components/UserNav.jsx';
 import { api } from '../api';
+import BrandMark from '../components/BrandMark.jsx';
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -14,13 +14,13 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <>
-        <UserNav />
-        <main className="container narrow">
+      <div className="auth-shell">
+        <div className="auth-card">
+          <div className="brand-mark"><BrandMark /><span className="brand-name">Proca Express</span></div>
           <h1>Invalid link</h1>
-          <p className="muted">Reset token missing.</p>
-        </main>
-      </>
+          <p className="muted">Reset token missing or malformed.</p>
+        </div>
+      </div>
     );
   }
 
@@ -43,12 +43,13 @@ export default function ResetPassword() {
   };
 
   return (
-    <>
-      <UserNav />
-      <main className="container narrow">
+    <div className="auth-shell">
+      <div className="auth-card">
+        <div className="brand-mark"><BrandMark /><span className="brand-name">Proca Express</span></div>
         <h1>Reset password</h1>
+        <p className="auth-sub">Pick a new password (8+ characters).</p>
         {error && <div className="notice error">{error}</div>}
-        <form onSubmit={onSubmit} className="card">
+        <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
           <label>New password
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password" required minLength={8} />
@@ -57,11 +58,11 @@ export default function ResetPassword() {
             <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
               autoComplete="new-password" required minLength={8} />
           </label>
-          <button className="btn primary" type="submit" disabled={pending}>
-            {pending ? 'Updating…' : 'Update password'}
+          <button className="btn primary full" type="submit" disabled={pending}>
+            {pending ? <><span className="spin" /> Updating…</> : 'Update password'}
           </button>
         </form>
-      </main>
-    </>
+      </div>
+    </div>
   );
 }

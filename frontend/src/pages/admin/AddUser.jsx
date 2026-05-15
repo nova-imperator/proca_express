@@ -30,11 +30,9 @@ export default function AddUser() {
     } catch (err) {
       const code = err.data?.error;
       setError(
-        code === 'duplicate_email_or_mobile'
-          ? 'A user with that email or mobile already exists.'
-          : code === 'missing_fields'
-          ? 'Email, mobile, and password are required.'
-          : 'Failed to create user.'
+        code === 'duplicate_email_or_mobile' ? 'A user with that email or mobile already exists.'
+        : code === 'missing_fields' ? 'Email, mobile, and password are required.'
+        : 'Failed to create user.'
       );
     } finally {
       setPending(false);
@@ -45,14 +43,15 @@ export default function AddUser() {
     <>
       <AdminNav />
       <main className="container narrow">
-        <h1>Add user</h1>
+        <h1 className="page-title">Add user</h1>
+        <p className="page-sub">Create login credentials and (optionally) attach company details.</p>
         {error && <div className="notice error">{error}</div>}
         <form onSubmit={onSubmit} className="card">
           <label>Email <span className="req">*</span>
-            <input type="email" value={form.email} onChange={onChange('email')} required />
+            <input type="email" value={form.email} onChange={onChange('email')} placeholder="user@company.com" required />
           </label>
           <label>Mobile <span className="req">*</span>
-            <input type="tel" value={form.mobile} onChange={onChange('mobile')} required />
+            <input type="tel" value={form.mobile} onChange={onChange('mobile')} placeholder="+91 90000 00000" required />
           </label>
           <label>Password <span className="req">*</span>
             <input type="password" value={form.password} onChange={onChange('password')} required minLength={8} />
@@ -60,6 +59,7 @@ export default function AddUser() {
           <label>Confirm password <span className="req">*</span>
             <input type="password" value={form.confirm} onChange={onChange('confirm')} required minLength={8} />
           </label>
+          <div className="divider" />
           <label>Full name
             <input type="text" value={form.full_name} onChange={onChange('full_name')} />
           </label>
@@ -74,7 +74,7 @@ export default function AddUser() {
           </label>
           <div className="row">
             <button className="btn primary" type="submit" disabled={pending}>
-              {pending ? 'Creating…' : 'Create user'}
+              {pending ? <><span className="spin" /> Creating…</> : 'Create user'}
             </button>
             <Link className="btn" to="/admin/users">Cancel</Link>
           </div>

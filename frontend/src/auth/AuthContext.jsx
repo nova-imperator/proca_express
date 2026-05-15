@@ -6,32 +6,31 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [admin, setAdmin] = useState(null);
+  const [config, setConfig] = useState({ recaptcha_site_key: null });
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    try {
-      const u = await api.get('/api/auth/me').catch(() => null);
-      setUser(u?.user || null);
-    } catch {
-      setUser(null);
-    }
-    try {
-      const a = await api.get('/api/admin/auth/me').catch(() => null);
-      setAdmin(a?.admin || null);
-    } catch {
-      setAdmin(null);
-    }
+    const [u, a] = await Promise.all([
+      api.get('/api/auth/me').catch(() => null),
+      api.get('/api/admin/auth/me').catch(() => null),
+    ]);
+    setUser(u?.user || null);
+    setAdmin(a?.admin || null);
   }, []);
 
   useEffect(() => {
     (async () => {
+      try {
+        const cfg = await api.get('/api/config');
+        setConfig(cfg || { recaptcha_site_key: null });
+      } catch { /* leave defaults */ }
       await refresh();
       setLoading(false);
     })();
   }, [refresh]);
 
-  const loginUser = async (identifier, password) => {
-    const data = await api.post('/api/auth/login', { identifier, password });
+  const loginUser = async (identifier, password, recaptcha_token) => {
+    const data = await api.post('/api/auth/login', { identifier, password, recaptcha_token });
     setUser(data.user);
     return data;
   };
@@ -41,8 +40,8 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const loginAdmin = async (email, password) => {
-    const data = await api.post('/api/admin/auth/login', { email, password });
+  const loginAdmin = async (email, password, recaptcha_token) => {
+    const data = await api.post('/api/admin/auth/login', { email, password, recaptcha_token });
     setAdmin(data.admin);
     return data;
   };
@@ -54,7 +53,10 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, admin, loading, refresh, loginUser, logoutUser, loginAdmin, logoutAdmin }}
+      value={{
+        user, admin, loading, config,
+        refresh, loginUser, logoutUser, loginAdmin, logoutAdmin,
+      }}
     >
       {children}
     </AuthContext.Provider>

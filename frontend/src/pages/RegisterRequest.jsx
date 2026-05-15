@@ -33,18 +33,18 @@ export default function RegisterRequest() {
     <>
       <UserNav />
       <main className="container narrow">
-        <h1>Register request</h1>
-        <p className="muted">Tell us about your business — our team will get back to you.</p>
+        <h1 className="page-title">Register request</h1>
+        <p className="page-sub">Tell us about your business — our team will get back to you within one business day.</p>
 
         {error && <div className="notice error">{error}</div>}
         {success && <div className="notice success">{success}</div>}
 
         <form onSubmit={onSubmit} className="card">
           <label>Email <span className="req">*</span>
-            <input type="email" value={form.email} onChange={onChange('email')} required />
+            <input type="email" value={form.email} onChange={onChange('email')} placeholder="you@company.com" required />
           </label>
           <label>Mobile number <span className="req">*</span>
-            <input type="tel" value={form.mobile} onChange={onChange('mobile')} required />
+            <input type="tel" value={form.mobile} onChange={onChange('mobile')} placeholder="+91 90000 00000" required />
           </label>
           <label>Full name
             <input type="text" value={form.full_name} onChange={onChange('full_name')} />
@@ -58,12 +58,14 @@ export default function RegisterRequest() {
           <label>Company GST
             <input type="text" value={form.company_gst} onChange={onChange('company_gst')} />
           </label>
-          <button type="submit" className="btn primary" disabled={pending}>
-            {pending ? 'Submitting…' : 'Submit request'}
+          <button type="submit" className="btn primary full" disabled={pending}>
+            {pending ? <><span className="spin" /> Submitting…</> : 'Submit request'}
           </button>
         </form>
 
-        <p><Link to="/">Back to sign in</Link></p>
+        <p style={{ marginTop: '1rem' }}>
+          <Link className="inline-link" to="/">← Back to sign in</Link>
+        </p>
       </main>
     </>
   );
