@@ -7,11 +7,15 @@ import { api } from '../../api';
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [recent, setRecent] = useState(null);
+  const [webhook, setWebhook] = useState(null);
 
   useEffect(() => {
     api.get('/api/admin/stats')
       .then((d) => { setStats(d.stats); setRecent(d.recent_requests || []); })
       .catch(() => { setStats({}); setRecent([]); });
+    api.get('/api/admin/webhook-events?limit=10')
+      .then((d) => setWebhook(d))
+      .catch(() => setWebhook({ events: [], counts: { total: 0, last_24h: 0, last_hour: 0, latest: null } }));
   }, []);
 
   const loading = stats === null;
@@ -39,12 +43,72 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        <div className="row-between anim-in anim-d3" style={{ marginBottom: '0.5rem' }}>
+        {/* Webhook activity */}
+        <div className="row-between anim-in anim-d2" style={{ marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.05rem', margin: 0 }}>MindLabs webhook activity</h2>
+          {webhook && (
+            <span className="muted" style={{ fontSize: '0.85rem' }}>
+              {webhook.counts.total} total · {webhook.counts.last_24h} in 24h ·{' '}
+              {webhook.counts.last_hour} in 1h
+            </span>
+          )}
+        </div>
+
+        <div className="card anim-in anim-d3" style={{ padding: 0, marginBottom: '1.5rem' }}>
+          {webhook === null ? (
+            <table className="data-table">
+              <thead><tr><th>Received</th><th>Device</th><th>Type</th><th>Packets</th><th>Signature</th></tr></thead>
+              <tbody><SkeletonRow cols={5} /><SkeletonRow cols={5} /><SkeletonRow cols={5} /></tbody>
+            </table>
+          ) : webhook.events.length === 0 ? (
+            <div style={{ padding: '1.5rem', textAlign: 'center' }} className="muted">
+              <p style={{ margin: 0, fontWeight: 500, color: 'var(--fg-soft)' }}>
+                No webhook events yet
+              </p>
+              <p style={{ margin: '0.4rem 0 0', fontSize: '0.85rem' }}>
+                Confirm the webhook URL is saved + active in the MindLabs portal. If it's saved
+                but nothing arrives within an hour, MindLabs likely needs an HTTPS endpoint —
+                ask the engineering team to set up TLS for{' '}
+                <code style={{ background: 'var(--surface-2)', padding: '0.1rem 0.4rem', borderRadius: 4 }}>
+                  tracking.procaexpress.in
+                </code>.
+              </p>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Received</th>
+                  <th>Device</th>
+                  <th>Type</th>
+                  <th>Packets</th>
+                  <th>Signature</th>
+                </tr>
+              </thead>
+              <tbody>
+                {webhook.events.map((e) => (
+                  <tr key={e.id}>
+                    <td>{new Date(e.received_at).toLocaleString()}</td>
+                    <td style={{ fontFamily: 'ui-monospace, monospace' }}>{e.device_id || '—'}</td>
+                    <td>{e.payload_type || '—'}</td>
+                    <td>{e.packet_count ?? 0}</td>
+                    <td className="muted" style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.78rem' }}>
+                      {e.signature ? `${e.signature.slice(0, 18)}…` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Register requests */}
+        <div className="row-between anim-in anim-d4" style={{ marginBottom: '0.5rem' }}>
           <h2 style={{ fontSize: '1.05rem', margin: 0 }}>Recent register requests</h2>
           <Link className="inline-link" to="/admin/register-requests">View all →</Link>
         </div>
 
-        <div className="card anim-in anim-d4" style={{ padding: 0 }}>
+        <div className="card anim-in anim-d5" style={{ padding: 0 }}>
           <table className="data-table">
             <thead>
               <tr><th>Submitted</th><th>Name</th><th>Email</th><th>Mobile</th><th>Action</th></tr>

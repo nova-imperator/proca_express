@@ -253,6 +253,34 @@ router.delete('/users/:id', async (req, res) => {
 });
 
 // ============================================================
+// Webhook activity (admin-only monitoring view)
+// ============================================================
+
+// GET /api/admin/webhook-events?limit=20
+router.get('/webhook-events', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || '20', 10), 100);
+  const { rows } = await query(
+    `SELECT id, source, payload_timestamp, signature, packet_count, received_at,
+            raw->'payload'->'data'->>'id' AS device_id,
+            raw->'payload'->>'type'        AS payload_type
+       FROM webhook_events
+      ORDER BY received_at DESC
+      LIMIT $1`,
+    [limit]
+  );
+  const counts = await query(
+    `SELECT
+       COUNT(*)::int                                                              AS total,
+       COUNT(*) FILTER (WHERE received_at > NOW() - INTERVAL '24 hours')::int     AS last_24h,
+       COUNT(*) FILTER (WHERE received_at > NOW() - INTERVAL '1 hour')::int       AS last_hour,
+       MAX(received_at)                                                           AS latest
+       FROM webhook_events
+      WHERE source = 'mindlabs'`
+  );
+  res.json({ events: rows, counts: counts.rows[0] });
+});
+
+// ============================================================
 // Devices (mirror of MindLabs catalog)
 // ============================================================
 

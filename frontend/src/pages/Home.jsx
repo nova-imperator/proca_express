@@ -48,7 +48,6 @@ export default function Home() {
               <thead>
                 <tr>
                   <th>Device ID</th>
-                  <th>Asset</th>
                   <th>Status</th>
                   <th>Last temp</th>
                   <th>Battery</th>
@@ -59,9 +58,9 @@ export default function Home() {
               <tbody>
                 {devices === null ? (
                   <>
-                    <SkeletonRow cols={7} />
-                    <SkeletonRow cols={7} />
-                    <SkeletonRow cols={7} />
+                    <SkeletonRow cols={6} />
+                    <SkeletonRow cols={6} />
+                    <SkeletonRow cols={6} />
                   </>
                 ) : devices.map((d, i) => {
                   const fresh = d.last_seen_at &&
@@ -69,7 +68,6 @@ export default function Home() {
                   return (
                     <tr key={d.id} className="anim-in" style={{ animationDelay: `${Math.min(i * 25, 280)}ms` }}>
                       <td style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 500 }}>{d.id}</td>
-                      <td>{d.asset_name || d.personal_reference || d.type || '—'}</td>
                       <td>
                         <span className={`badge ${fresh ? 'active' : 'disabled'}`} title={fresh ? 'Reported in last 24h' : 'No recent report'}>
                           {fresh ? 'live' : 'stale'}

@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AdminNav from '../../components/AdminNav.jsx';
 import { SkeletonRow } from '../../components/Skeleton.jsx';
+import ConfirmDangerDialog from '../../components/ConfirmDangerDialog.jsx';
 import { api } from '../../api';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState(null);
   const [q, setQ] = useState('');
+  const [toDelete, setToDelete] = useState(null);     // user being deleted
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     setUsers(null);
@@ -19,10 +22,16 @@ export default function AdminUsers() {
   };
   useEffect(() => { load(); }, []);
 
-  const onDelete = async (id) => {
-    if (!confirm('Delete this user? This cannot be undone.')) return;
-    await api.del(`/api/admin/users/${id}`);
-    load();
+  const onConfirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await api.del(`/api/admin/users/${toDelete.id}`);
+      setToDelete(null);
+      load();
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const needle = q.trim().toLowerCase();
@@ -90,7 +99,7 @@ export default function AdminUsers() {
                   </td>
                   <td className="actions">
                     <Link to={`/admin/edit-user/${u.id}`}>Edit</Link>
-                    <button className="danger" onClick={() => onDelete(u.id)}>Delete</button>
+                    <button className="danger" onClick={() => setToDelete(u)}>Delete</button>
                   </td>
                 </tr>
               ))}
@@ -98,6 +107,23 @@ export default function AdminUsers() {
           </table>
         </div>
       </main>
+
+      <ConfirmDangerDialog
+        open={!!toDelete}
+        title="Delete user"
+        description={
+          <>
+            You are about to permanently delete{' '}
+            <strong>{toDelete?.full_name || toDelete?.email}</strong>. Their assigned
+            devices will be un-assigned but device data is kept. This cannot be undone.
+          </>
+        }
+        confirmWord="delete"
+        actionLabel="Delete user"
+        pending={deleting}
+        onConfirm={onConfirmDelete}
+        onClose={() => !deleting && setToDelete(null)}
+      />
     </>
   );
 }
