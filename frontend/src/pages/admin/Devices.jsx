@@ -66,7 +66,7 @@ export default function AdminDevices() {
               placeholder="Search id, asset, user…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              style={{ width: 260 }}
+              className="search-input"
             />
             <button className="btn primary" onClick={onSync} disabled={syncing}>
               {syncing ? <><span className="spin" /> Syncing…</> : '↻ Sync from MindLabs'}
@@ -188,8 +188,7 @@ function AssignDialog({ device, onClose, onDone }) {
           {device.user_id ? 'Currently assigned. Pick a new user to reassign.' : 'Pick a user to give them access.'}
         </p>
         <label>User
-          <select value={userId} onChange={(e) => setUserId(e.target.value)} required
-                  style={{ padding: '0.55rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', font: 'inherit' }}>
+          <select value={userId} onChange={(e) => setUserId(e.target.value)} required>
             <option value="">— select user —</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>

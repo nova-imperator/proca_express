@@ -58,7 +58,7 @@ export default function AdminUsers() {
               placeholder="Search name, email, mobile…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              style={{ width: 260 }}
+              className="search-input"
             />
             <Link className="btn primary" to="/admin/add-user">+ Add user</Link>
           </div>

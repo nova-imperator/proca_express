@@ -145,13 +145,43 @@ input[type=text], input[type=email], input[type=tel], input[type=password] {
   font: inherit; color: var(--fg);
   background: #fff;
   transition: border-color .15s ease, box-shadow .15s ease;
+  width: 100%;
 }
-input:focus {
+input:focus, select:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 input::placeholder { color: var(--muted-2); }
+
+/* Native select with a custom chevron. The default UA dropdown looks plain;
+ * this gets us 90% of a styled combobox with 0% of the JS cost. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 0.65rem 2.4rem 0.65rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2.5 4.5l3.5 3.5 3.5-3.5' stroke='%2364748b' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 12px 12px;
+  font: inherit; color: var(--fg);
+  cursor: pointer;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+select:hover { border-color: var(--muted-2); }
+select[disabled] { background-color: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+
+/* Reusable search input — fits its container, never overflows on mobile. */
+.search-input {
+  width: 260px;
+  max-width: 100%;
+  flex: 1 1 200px;
+}
 
 /* ========== Buttons ========== */
 .btn {
@@ -314,15 +344,32 @@ input::placeholder { color: var(--muted-2); }
   gap: 1rem;
 }
 
-/* ========== Dialog (forgot password) ========== */
+/* ========== Dialog ========== */
 dialog {
-  border: none; border-radius: var(--radius-lg);
-  padding: 0; max-width: 420px; width: calc(100% - 2rem);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 0;
+  width: calc(100% - 2rem);
+  max-width: 460px;
   box-shadow: var(--shadow-lg);
+  /* Native <dialog> defaults inherit some weirdness; explicit colors so we
+   * never end up with system grey text on light bg. */
+  background: var(--surface);
+  color: var(--fg);
 }
-dialog::backdrop { background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(2px); }
-dialog .card { margin: 0; border: none; box-shadow: none; }
-dialog menu { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0; margin: 0; }
+dialog::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  animation: fadeIn .2s ease both;
+}
+dialog .card { margin: 0; border: none; box-shadow: none; padding: 1.5rem; }
+dialog menu { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0; margin: 0; flex-wrap: wrap; }
+@media (max-width: 480px) {
+  dialog { border-radius: var(--radius); }
+  dialog .card { padding: 1.1rem; }
+  dialog menu { flex-direction: column-reverse; }
+  dialog menu .btn { width: 100%; }
+}
 
 /* ========== Misc ========== */
 .divider { height: 1px; background: var(--border); margin: 0.25rem 0; }
@@ -583,9 +630,45 @@ dialog menu { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0;
   animation: fadeIn .8s ease both; animation-delay: .6s;
 }
 
+/* ============================================================
+ * Responsive — mobile-first refinements applied at breakpoints
+ * ============================================================ */
+
+/* Tables that live inside .card { padding: 0 } can be wider than the viewport.
+ * Letting the card scroll horizontally is the standard pattern. */
+.card { overflow-x: auto; }
+
+@media (max-width: 720px) {
+  /* Tighter container padding so we don't waste pixels on the edges. */
+  .container { padding: 1.25rem 0.85rem; }
+
+  /* Header */
+  .site-header { padding: 0.6rem 0.85rem; }
+  .site-header nav { gap: 0.35rem; font-size: 0.85rem; flex-wrap: wrap; justify-content: flex-end; }
+  .site-header nav a { padding: 0.3rem 0.5rem; }
+  .brand .brand-name, .brand span { font-size: 0.95rem; }
+
+  /* Row groupings reflow to a single column. */
+  .row-between { flex-direction: column; align-items: stretch; }
+  .row-between > * { width: 100%; }
+  .row { flex-wrap: wrap; }
+
+  /* Search bars + adjacent buttons stack neatly. */
+  .row > .search-input { width: 100%; }
+  .row > .btn, .row > a.btn { flex: 1 1 auto; text-align: center; justify-content: center; }
+}
+
+@media (max-width: 600px) {
+  /* Tables: slim padding so more columns fit before scroll kicks in;
+   * the .card overflow-x lets them scroll if they still don't. */
+  .data-table { font-size: 0.85rem; }
+  .data-table th, .data-table td { padding: 0.55rem 0.6rem; white-space: nowrap; }
+  .data-table .actions { gap: 0.55rem; }
+}
+
 @media (max-width: 640px) {
-  .container { padding: 1.5rem 1rem; }
   .stat .stat-value { font-size: 1.7rem; }
   h1 { font-size: 1.4rem; }
   .login-form-pane { padding: 1.5rem 1rem; }
+  .auth-card { padding: 1.5rem; }
 }
