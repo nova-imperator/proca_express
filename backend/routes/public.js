@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db');
-const { verify: verifyCaptcha } = require('../utils/recaptcha');
+const captcha = require('../utils/captcha');
 const mailer = require('../utils/mailer');
 
 // POST /api/register-request
@@ -13,15 +13,16 @@ router.post('/register-request', async (req, res) => {
     designation = '',
     company_name = '',
     company_gst = '',
-    recaptcha_token,
+    captcha_token,
+    captcha_answer,
   } = req.body || {};
 
   const errors = [];
   if (!String(email).trim()) errors.push('email_required');
   if (!String(mobile).trim()) errors.push('mobile_required');
 
-  const captcha = await verifyCaptcha(recaptcha_token, req.ip);
-  if (!captcha.ok) errors.push('captcha_failed');
+  const cap = captcha.verify(captcha_token, captcha_answer);
+  if (!cap.ok) errors.push(cap.error);
 
   if (errors.length) {
     return res.status(400).json({ error: 'validation_failed', details: errors });

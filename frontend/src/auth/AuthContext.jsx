@@ -6,7 +6,6 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [admin, setAdmin] = useState(null);
-  const [config, setConfig] = useState({ recaptcha_site_key: null });
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -20,17 +19,13 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     (async () => {
-      try {
-        const cfg = await api.get('/api/config');
-        setConfig(cfg || { recaptcha_site_key: null });
-      } catch { /* leave defaults */ }
       await refresh();
       setLoading(false);
     })();
   }, [refresh]);
 
-  const loginUser = async (identifier, password, recaptcha_token) => {
-    const data = await api.post('/api/auth/login', { identifier, password, recaptcha_token });
+  const loginUser = async (identifier, password, captcha_token, captcha_answer) => {
+    const data = await api.post('/api/auth/login', { identifier, password, captcha_token, captcha_answer });
     setUser(data.user);
     return data;
   };
@@ -40,8 +35,8 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const loginAdmin = async (email, password, recaptcha_token) => {
-    const data = await api.post('/api/admin/auth/login', { email, password, recaptcha_token });
+  const loginAdmin = async (email, password, captcha_token, captcha_answer) => {
+    const data = await api.post('/api/admin/auth/login', { email, password, captcha_token, captcha_answer });
     setAdmin(data.admin);
     return data;
   };
@@ -53,10 +48,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{
-        user, admin, loading, config,
-        refresh, loginUser, logoutUser, loginAdmin, logoutAdmin,
-      }}
+      value={{ user, admin, loading, refresh, loginUser, logoutUser, loginAdmin, logoutAdmin }}
     >
       {children}
     </AuthContext.Provider>

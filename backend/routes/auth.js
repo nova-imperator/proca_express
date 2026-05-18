@@ -5,7 +5,7 @@ const router = express.Router();
 
 const { query } = require('../config/db');
 const { setUserCookie, clearAuthCookies } = require('../middleware/auth');
-const { verify: verifyCaptcha } = require('../utils/recaptcha');
+const captcha = require('../utils/captcha');
 const mailer = require('../utils/mailer');
 
 // GET /api/auth/me
@@ -19,7 +19,7 @@ router.get('/me', async (req, res) => {
   res.json({ user: rows[0] });
 });
 
-// POST /api/auth/login   body: { identifier, password, recaptcha_token? }
+// POST /api/auth/login   body: { identifier, password, captcha_token, captcha_answer }
 router.post('/login', async (req, res) => {
   const identifier = String(req.body?.identifier || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
@@ -28,8 +28,8 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'missing_fields' });
   }
 
-  const captcha = await verifyCaptcha(req.body?.recaptcha_token, req.ip);
-  if (!captcha.ok) return res.status(400).json({ error: 'captcha_failed' });
+  const cap = captcha.verify(req.body?.captcha_token, req.body?.captcha_answer);
+  if (!cap.ok) return res.status(400).json({ error: cap.error });
 
   // Match by email (case-insensitive) OR by mobile, comparing the digits only
   // on both sides so "+91 8929023900" and "8929023900" both work.

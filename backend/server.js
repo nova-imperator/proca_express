@@ -40,8 +40,8 @@ const app = express();
 // cookie `secure` evaluation can read `req.secure` correctly.
 app.set('trust proxy', 1);
 
-// Security headers (defaults are safe; CSP turned off because Vite-built
-// inline scripts + the Google reCAPTCHA loader need additional sources).
+// Security headers (defaults are safe; CSP turned off because the Vite-built
+// bundle uses inline styles, which a strict CSP would block).
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
 // CORS: explicit origin allowlist + credentials so the React frontend can
@@ -79,9 +79,25 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(attachUser);
 
-// Public throttle on auth endpoints.
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
-app.use(['/api/auth', '/api/admin/auth', '/api/register-request'], authLimiter);
+// Throttle abuse-prone endpoints (login attempts, password reset, signup).
+// Scope must NOT include /me — that fires on every page load and would lock
+// out users for refreshing the dashboard. We attach the limiter only to the
+// actual sensitive paths.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'too_many_attempts' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const sensitivePaths = [
+  '/api/auth/login',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/admin/auth/login',
+  '/api/register-request',
+];
+sensitivePaths.forEach((p) => app.use(p, authLimiter));
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 

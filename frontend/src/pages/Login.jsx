@@ -3,40 +3,43 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api } from '../api';
 import BrandMark from '../components/BrandMark.jsx';
-import Recaptcha from '../components/Recaptcha.jsx';
+import Captcha from '../components/Captcha.jsx';
 
 export default function Login() {
-  const { user, loginUser, config } = useAuth();
+  const { user, loginUser } = useAuth();
   const nav = useNavigate();
   const [params] = useSearchParams();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [captchaToken, setCaptchaToken] = useState(null);
+  const [captcha, setCaptcha] = useState({ token: '', answer: '' });
   const [error, setError] = useState(null);
   const [pending, setPending] = useState(false);
   const dlgRef = useRef(null);
+  const captchaRef = useRef(null);
 
-  const onCaptchaChange = useCallback((tok) => setCaptchaToken(tok), []);
+  const onCaptchaChange = useCallback((c) => setCaptcha(c), []);
 
   if (user) return <Navigate to="/home" replace />;
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    if (config.recaptcha_site_key && !captchaToken) {
-      return setError('Please complete the captcha.');
-    }
+    if (!captcha.answer) return setError('Please solve the captcha.');
     setPending(true);
     try {
-      await loginUser(identifier, password, captchaToken);
+      await loginUser(identifier, password, captcha.token, captcha.answer);
       nav('/home');
     } catch (err) {
       const c = err.data?.error;
-      setError(
+      const msg =
         c === 'invalid_credentials' ? 'Invalid email/mobile or password.'
-        : c === 'captcha_failed' ? 'Captcha check failed — try again.'
-        : 'Sign in failed.'
-      );
+        : c === 'captcha_wrong'   ? 'Captcha answer is wrong — try again.'
+        : c === 'captcha_expired' ? 'Captcha expired — refreshed for you.'
+        : c === 'captcha_invalid' || c === 'captcha_missing' ? 'Captcha check failed — try again.'
+        : c === 'too_many_attempts' ? 'Too many attempts — wait a few minutes.'
+        : 'Sign in failed.';
+      setError(msg);
+      captchaRef.current?.refresh();
     } finally {
       setPending(false);
     }
@@ -81,7 +84,10 @@ export default function Login() {
             />
           </label>
 
-          <Recaptcha siteKey={config.recaptcha_site_key} onChange={onCaptchaChange} />
+          <label>
+            Verify you're human
+            <Captcha ref={captchaRef} onChange={onCaptchaChange} />
+          </label>
 
           <button type="submit" className="btn primary full" disabled={pending}>
             {pending ? <><span className="spin" /> Signing in…</> : 'Sign in'}
