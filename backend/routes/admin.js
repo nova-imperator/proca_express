@@ -414,18 +414,8 @@ router.get('/devices/:id/iframe-token', async (req, res) => {
   const id = String(req.params.id);
   const dev = await query('SELECT 1 FROM devices WHERE id = $1', [id]);
   if (!dev.rows[0]) return res.status(404).json({ error: 'not_found' });
-
   try {
-    const result = await mindlabs.generateIframeToken();
-    if (result?.success === false) {
-      return res.status(502).json({
-        error: 'iframe_token_denied',
-        message: result.message || 'MindLabs declined the request — check that the API key has iframe permission.',
-      });
-    }
-    const token = result?.token || result?.data?.token || result?.data?.iframeToken || result?.iframeToken;
-    if (!token) return res.status(502).json({ error: 'iframe_token_missing' });
-    res.json({ token, org_id: process.env.MINDLABS_ORG_ID || '', device_id: id });
+    res.json(await mindlabs.buildIframePayload(id));
   } catch (err) {
     res.status(err.status || 502).json({ error: 'iframe_token_failed', message: err.message });
   }

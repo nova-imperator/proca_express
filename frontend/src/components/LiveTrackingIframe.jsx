@@ -19,7 +19,7 @@ import { api } from '../api';
 export default function LiveTrackingIframe({ deviceId, isAdmin }) {
   const iframeRef = useRef(null);
   const [src, setSrc] = useState(null);
-  const [orgId, setOrgId] = useState(null);
+  const [mode, setMode] = useState(null);  // 'mindlabs' | 'apikey'
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,37 +27,26 @@ export default function LiveTrackingIframe({ deviceId, isAdmin }) {
     ? `/api/admin/devices/${deviceId}/iframe-token`
     : `/api/devices/${deviceId}/iframe-token`;
 
-  const fetchToken = useCallback(async () => {
-    const data = await api.get(path);
-    return data;
-  }, [path]);
+  const fetchToken = useCallback(() => api.get(path), [path]);
 
   // Initial token + src build.
   useEffect(() => {
     let cancelled = false;
     setLoading(true); setError(null);
     fetchToken()
-      .then(({ token, org_id }) => {
+      .then(({ token, org_id, mode }) => {
         if (cancelled) return;
         if (!token || !org_id) {
           setError('Live tracking is not configured — missing token or org id.');
           return;
         }
-        setOrgId(org_id);
+        setMode(mode);
         setSrc(`https://app.mindlabs.cloud/track/${encodeURIComponent(deviceId)}` +
                `?iframeOrgId=${encodeURIComponent(org_id)}&iframeToken=${encodeURIComponent(token)}`);
       })
       .catch((err) => {
         if (cancelled) return;
-        const reason =
-          err.data?.error === 'iframe_token_denied'
-            ? 'MindLabs’ iframe-token endpoint expects a logged-in user ' +
-              'session (Cognito IdToken), not an API key — the integration ' +
-              'doc that says `apikey: API_KEY` is inaccurate. Ask MindLabs ' +
-              'support for the correct server-to-server iframe flow, or use ' +
-              'the cached sensor data and packet history below.'
-            : err.data?.message || 'Could not load live tracking.';
-        setError(reason);
+        setError(err.data?.message || 'Could not load live tracking.');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -114,6 +103,15 @@ export default function LiveTrackingIframe({ deviceId, isAdmin }) {
 
   return (
     <div className="iframe-shell anim-in">
+      {mode === 'apikey' && (
+        <div className="iframe-mode-note">
+          ⚠️ Experimental: the MindLabs iframe-token API didn't accept our key
+          (their endpoint expects a user-session JWT, not an API key). We're
+          passing the API key directly as the iframeToken — if MindLabs
+          rejects this in the iframe below, ask their support for the
+          correct server-to-server flow.
+        </div>
+      )}
       <iframe
         ref={iframeRef}
         src={src}

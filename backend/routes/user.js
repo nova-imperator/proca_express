@@ -67,24 +67,19 @@ router.get('/devices/:id', requireUser, async (req, res) => {
 
 // GET /api/devices/:id/iframe-token — used by the React iframe to bootstrap +
 // refresh the MindLabs live-tracking embed. Ownership-gated.
+//
+// The docs say `apikey:` should work on /v1/auth/generate-iframe-token but in
+// reality that endpoint demands a Cognito IdToken (a logged-in MindLabs user
+// session JWT). With only an API key, we therefore fall back to passing the
+// API key itself as the iframeToken — if MindLabs accepts it, great; if not,
+// the iframe will render their error page and we'll know definitively. The
+// fallback is signalled via `mode: 'apikey'` so the UI can surface a warning.
 router.get('/devices/:id/iframe-token', requireUser, async (req, res) => {
   const id = String(req.params.id);
   const own = await query('SELECT 1 FROM devices WHERE id = $1 AND user_id = $2', [id, req.user.id]);
   if (!own.rows[0]) return res.status(404).json({ error: 'not_found' });
-
   try {
-    const result = await mindlabs.generateIframeToken();
-    // MindLabs response shape isn't documented; accept either { token } at root,
-    // or { data: { token } }, or { success: false, message }.
-    if (result?.success === false) {
-      return res.status(502).json({
-        error: 'iframe_token_denied',
-        message: result.message || 'MindLabs declined the request — check that the API key has iframe permission.',
-      });
-    }
-    const token = result?.token || result?.data?.token || result?.data?.iframeToken || result?.iframeToken;
-    if (!token) return res.status(502).json({ error: 'iframe_token_missing' });
-    res.json({ token, org_id: process.env.MINDLABS_ORG_ID || '', device_id: id });
+    res.json(await mindlabs.buildIframePayload(id));
   } catch (err) {
     res.status(err.status || 502).json({ error: 'iframe_token_failed', message: err.message });
   }

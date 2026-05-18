@@ -96,9 +96,39 @@ function updateLoggersConfig(ids, config) {
   return call('PATCH', '/v1/loggers/config', { query: { ids }, body: { config } });
 }
 
-// ---- Iframe token (used in Pass 2 once user has ORG_ID) ----
+// ---- Iframe token (used by /devices/:id/iframe-token routes) ----
 function generateIframeToken() {
   return call('GET', '/v1/auth/generate-iframe-token');
+}
+
+/**
+ * Build the response payload for our /iframe-token endpoints.
+ *
+ * Tries MindLabs' generate-iframe-token first; if that fails (it currently
+ * does, because the endpoint wants a Cognito IdToken and we only have an
+ * API key), falls back to handing the API key itself to the iframe URL as
+ * the `iframeToken` parameter.
+ *
+ * Returns: { token, org_id, device_id, mode: 'mindlabs' | 'apikey' }
+ * Throws  { status, message } on no-token, no-apikey total failure.
+ */
+async function buildIframePayload(deviceId) {
+  const orgId = process.env.MINDLABS_ORG_ID || '';
+  try {
+    const result = await generateIframeToken();
+    if (result?.success === false) throw new Error(result.message || 'denied');
+    const token = result?.token || result?.data?.token || result?.data?.iframeToken || result?.iframeToken;
+    if (!token) throw new Error('no token in response');
+    return { token, org_id: orgId, device_id: deviceId, mode: 'mindlabs' };
+  } catch (_e) {
+    const apiKey = process.env.MINDLABS_API_KEY || '';
+    if (!apiKey) {
+      const err = new Error('no_token_and_no_apikey');
+      err.status = 502;
+      throw err;
+    }
+    return { token: apiKey, org_id: orgId, device_id: deviceId, mode: 'apikey' };
+  }
 }
 
 module.exports = {
@@ -109,4 +139,5 @@ module.exports = {
   getLoggersConfig,
   updateLoggersConfig,
   generateIframeToken,
+  buildIframePayload,
 };
