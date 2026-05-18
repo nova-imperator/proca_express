@@ -3,6 +3,7 @@ import { Link, useParams, useLocation } from 'react-router-dom';
 import UserNav from '../components/UserNav.jsx';
 import AdminNav from '../components/AdminNav.jsx';
 import { SkeletonLine, SkeletonRow } from '../components/Skeleton.jsx';
+import LiveTrackingIframe from '../components/LiveTrackingIframe.jsx';
 import { api } from '../api';
 
 // Dual-mode device detail page.
@@ -74,7 +75,12 @@ export default function DeviceDetail() {
           </div>
         </div>
 
+        {/* Live MindLabs embed */}
+        <h2 style={{ fontSize: '1.05rem', margin: '0.25rem 0 0.5rem' }}>Live tracking</h2>
+        <LiveTrackingIframe deviceId={device.id} isAdmin={isAdmin} />
+
         {/* Current snapshot */}
+        <h2 style={{ fontSize: '1.05rem', margin: '0.5rem 0' }}>Current snapshot</h2>
         <div className="stat-grid stagger">
           <SnapStat label="Last temperature" value={device.last_temp_i  != null ? `${device.last_temp_i}°C` : '—'} />
           <SnapStat label="Last humidity"    value={device.last_humid_i != null ? `${device.last_humid_i}%` : '—'} />

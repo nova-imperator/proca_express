@@ -65,6 +65,31 @@ router.get('/devices/:id', requireUser, async (req, res) => {
   });
 });
 
+// GET /api/devices/:id/iframe-token — used by the React iframe to bootstrap +
+// refresh the MindLabs live-tracking embed. Ownership-gated.
+router.get('/devices/:id/iframe-token', requireUser, async (req, res) => {
+  const id = String(req.params.id);
+  const own = await query('SELECT 1 FROM devices WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+  if (!own.rows[0]) return res.status(404).json({ error: 'not_found' });
+
+  try {
+    const result = await mindlabs.generateIframeToken();
+    // MindLabs response shape isn't documented; accept either { token } at root,
+    // or { data: { token } }, or { success: false, message }.
+    if (result?.success === false) {
+      return res.status(502).json({
+        error: 'iframe_token_denied',
+        message: result.message || 'MindLabs declined the request — check that the API key has iframe permission.',
+      });
+    }
+    const token = result?.token || result?.data?.token || result?.data?.iframeToken || result?.iframeToken;
+    if (!token) return res.status(502).json({ error: 'iframe_token_missing' });
+    res.json({ token, org_id: process.env.MINDLABS_ORG_ID || '', device_id: id });
+  } catch (err) {
+    res.status(err.status || 502).json({ error: 'iframe_token_failed', message: err.message });
+  }
+});
+
 // GET /api/devices/:id/packets?start=...&end=... — fetch directly from MindLabs
 // for a wider time window than we have cached locally. Useful for exporting or
 // drilling deeper than 200 rows. Time params are unix seconds.
