@@ -63,12 +63,14 @@ export default function DeviceDetail() {
               <span className={`badge ${fresh ? 'active' : 'disabled'}`} style={{ marginLeft: 8 }}>
                 {fresh ? 'live' : 'stale'}
               </span>
-              {isAdmin && device.user_email && (
+              {isAdmin && Array.isArray(device.users) && device.users.length > 0 && (
                 <span className="muted" style={{ marginLeft: 12, fontSize: '0.85rem' }}>
-                  · assigned to {device.user_name || device.user_email}
+                  · assigned to {device.users.length === 1
+                    ? (device.users[0].name || device.users[0].email)
+                    : `${device.users.length} users`}
                 </span>
               )}
-              {isAdmin && !device.user_id && (
+              {isAdmin && Array.isArray(device.users) && device.users.length === 0 && (
                 <span className="badge disabled" style={{ marginLeft: 8 }}>unassigned</span>
               )}
             </p>

@@ -58,7 +58,7 @@ router.get('/stats', async (_req, res) => {
         (SELECT COUNT(*)::int FROM users WHERE is_active) AS active_users,
         (SELECT COUNT(*)::int FROM register_requests WHERE status = 'pending') AS pending_requests,
         (SELECT COUNT(*)::int FROM devices) AS device_count,
-        (SELECT COUNT(*)::int FROM devices WHERE user_id IS NOT NULL) AS assigned_device_count,
+        (SELECT COUNT(DISTINCT device_id)::int FROM device_assignments) AS assigned_device_count,
         (SELECT COUNT(*)::int FROM devices WHERE last_seen_at > NOW() - INTERVAL '24 hours') AS active_devices_24h
     `),
     query(`
@@ -284,15 +284,22 @@ router.get('/webhook-events', async (req, res) => {
 // Devices (mirror of MindLabs catalog)
 // ============================================================
 
-// GET /api/admin/devices — list of devices (from our DB), with assigned user
+// GET /api/admin/devices — list of devices with their assigned users array.
 router.get('/devices', async (_req, res) => {
   const { rows } = await query(`
     SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state,
            d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
            d.last_lat, d.last_lng, d.last_address,
-           d.user_id, u.full_name AS user_name, u.email AS user_email
+           COALESCE(
+             (SELECT json_agg(json_build_object(
+                       'id', u.id, 'name', u.full_name, 'email', u.email
+                     ) ORDER BY u.id)
+                FROM device_assignments da
+                JOIN users u ON u.id = da.user_id
+               WHERE da.device_id = d.id),
+             '[]'::json
+           ) AS users
       FROM devices d
-      LEFT JOIN users u ON u.id = d.user_id
      ORDER BY d.updated_at DESC
   `);
   res.json({ devices: rows });
@@ -370,9 +377,16 @@ router.get('/devices/:id', async (req, res) => {
     `SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state, d.org_id,
             d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
             d.last_lat, d.last_lng, d.last_address, d.raw_meta,
-            d.user_id, u.full_name AS user_name, u.email AS user_email
+            COALESCE(
+              (SELECT json_agg(json_build_object(
+                        'id', u.id, 'name', u.full_name, 'email', u.email
+                      ) ORDER BY u.id)
+                 FROM device_assignments da
+                 JOIN users u ON u.id = da.user_id
+                WHERE da.device_id = d.id),
+              '[]'::json
+            ) AS users
        FROM devices d
-       LEFT JOIN users u ON u.id = d.user_id
       WHERE d.id = $1`,
     [id]
   );
@@ -421,31 +435,37 @@ router.get('/devices/:id/iframe-token', async (req, res) => {
   }
 });
 
-// PUT /api/admin/devices/:id/assign   body: { user_id }
-router.put('/devices/:id/assign', async (req, res) => {
+// POST /api/admin/devices/:id/assignments   body: { user_id }
+// Adds a user to the device's assignment list. Idempotent — adding the same
+// user twice is a no-op.
+router.post('/devices/:id/assignments', async (req, res) => {
+  const deviceId = String(req.params.id);
   const userId = req.body?.user_id;
   if (userId === null || userId === '' || userId === undefined) {
     return res.status(400).json({ error: 'missing_user_id' });
   }
-  // Verify user exists.
+
+  const dev = await query('SELECT 1 FROM devices WHERE id = $1', [deviceId]);
+  if (!dev.rows[0]) return res.status(404).json({ error: 'device_not_found' });
   const u = await query('SELECT id FROM users WHERE id = $1', [userId]);
   if (!u.rows[0]) return res.status(404).json({ error: 'user_not_found' });
 
-  const { rows } = await query(
-    'UPDATE devices SET user_id = $1 WHERE id = $2 RETURNING id, user_id',
-    [userId, req.params.id]
+  await query(
+    `INSERT INTO device_assignments (device_id, user_id) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+    [deviceId, userId]
   );
-  if (!rows[0]) return res.status(404).json({ error: 'device_not_found' });
-  res.json({ ok: true, device: rows[0] });
+  res.status(201).json({ ok: true, device_id: deviceId, user_id: userId });
 });
 
-// DELETE /api/admin/devices/:id/assign — un-assign
-router.delete('/devices/:id/assign', async (req, res) => {
-  const { rows } = await query(
-    'UPDATE devices SET user_id = NULL WHERE id = $1 RETURNING id',
-    [req.params.id]
+// DELETE /api/admin/devices/:id/assignments/:user_id
+// Removes one specific user from the device's assignment list.
+router.delete('/devices/:id/assignments/:user_id', async (req, res) => {
+  const result = await query(
+    'DELETE FROM device_assignments WHERE device_id = $1 AND user_id = $2',
+    [req.params.id, req.params.user_id]
   );
-  if (!rows[0]) return res.status(404).json({ error: 'device_not_found' });
+  if (result.rowCount === 0) return res.status(404).json({ error: 'assignment_not_found' });
   res.json({ ok: true });
 });
 

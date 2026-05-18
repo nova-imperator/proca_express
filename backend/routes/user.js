@@ -4,15 +4,17 @@ const { requireUser } = require('../middleware/auth');
 const { query } = require('../config/db');
 const mindlabs = require('../utils/mindlabs');
 
-// GET /api/devices — list of devices assigned to the signed-in user
+// GET /api/devices — list of devices assigned to the signed-in user via the
+// device_assignments join table.
 router.get('/devices', requireUser, async (req, res) => {
   const { rows } = await query(
-    `SELECT id, type, asset_name, personal_reference, state,
-            last_seen_at, last_battery, last_temp_i, last_humid_i,
-            last_lat, last_lng, last_address
-       FROM devices
-      WHERE user_id = $1
-      ORDER BY last_seen_at DESC NULLS LAST, id`,
+    `SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state,
+            d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
+            d.last_lat, d.last_lng, d.last_address
+       FROM devices d
+       JOIN device_assignments da ON da.device_id = d.id
+      WHERE da.user_id = $1
+      ORDER BY d.last_seen_at DESC NULLS LAST, d.id`,
     [req.user.id]
   );
   res.json({ devices: rows });
@@ -25,11 +27,12 @@ router.get('/devices', requireUser, async (req, res) => {
 router.get('/devices/:id', requireUser, async (req, res) => {
   const id = String(req.params.id);
   const own = await query(
-    `SELECT id, type, asset_name, personal_reference, state,
-            last_seen_at, last_battery, last_temp_i, last_humid_i,
-            last_lat, last_lng, last_address, raw_meta
-       FROM devices
-      WHERE id = $1 AND user_id = $2`,
+    `SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state,
+            d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
+            d.last_lat, d.last_lng, d.last_address, d.raw_meta
+       FROM devices d
+       JOIN device_assignments da ON da.device_id = d.id
+      WHERE d.id = $1 AND da.user_id = $2`,
     [id, req.user.id]
   );
   if (!own.rows[0]) return res.status(404).json({ error: 'not_found' });
@@ -76,7 +79,10 @@ router.get('/devices/:id', requireUser, async (req, res) => {
 // fallback is signalled via `mode: 'apikey'` so the UI can surface a warning.
 router.get('/devices/:id/iframe-token', requireUser, async (req, res) => {
   const id = String(req.params.id);
-  const own = await query('SELECT 1 FROM devices WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+  const own = await query(
+    `SELECT 1 FROM device_assignments WHERE device_id = $1 AND user_id = $2`,
+    [id, req.user.id]
+  );
   if (!own.rows[0]) return res.status(404).json({ error: 'not_found' });
   try {
     res.json(await mindlabs.buildIframePayload(id));
@@ -91,7 +97,10 @@ router.get('/devices/:id/iframe-token', requireUser, async (req, res) => {
 router.get('/devices/:id/packets', requireUser, async (req, res) => {
   const id = String(req.params.id);
   // ownership gate first
-  const own = await query('SELECT 1 FROM devices WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+  const own = await query(
+    `SELECT 1 FROM device_assignments WHERE device_id = $1 AND user_id = $2`,
+    [id, req.user.id]
+  );
   if (!own.rows[0]) return res.status(404).json({ error: 'not_found' });
 
   const start = Number(req.query.start);

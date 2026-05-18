@@ -73,7 +73,6 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS devices (
   id                  TEXT PRIMARY KEY,                    -- MindLabs device id, e.g. "AA3630"
-  user_id             BIGINT REFERENCES users(id) ON DELETE SET NULL,
   type                TEXT,                                 -- ZN_GO, ZN_ANCHOR, ...
   asset_name          TEXT,                                 -- last seen from packet payload
   personal_reference  TEXT,
@@ -91,12 +90,37 @@ CREATE TABLE IF NOT EXISTS devices (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS devices_user_idx ON devices(user_id);
-
 DROP TRIGGER IF EXISTS devices_set_updated_at ON devices;
 CREATE TRIGGER devices_set_updated_at
   BEFORE UPDATE ON devices
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Many-to-many device ↔ user assignments. A device can be shared with
+-- multiple users (e.g. operations + finance + ops manager all need to see
+-- the same tracker); a user can have any number of devices.
+CREATE TABLE IF NOT EXISTS device_assignments (
+  device_id    TEXT   NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  user_id      BIGINT NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+  assigned_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (device_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS device_assignments_user_idx ON device_assignments(user_id);
+
+-- One-shot migration: lift any single-user `devices.user_id` values into the
+-- new join table, then drop the column. Guarded so re-runs are no-ops.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'devices' AND column_name = 'user_id'
+  ) THEN
+    INSERT INTO device_assignments (device_id, user_id)
+    SELECT id, user_id FROM devices WHERE user_id IS NOT NULL
+      ON CONFLICT DO NOTHING;
+    DROP INDEX IF EXISTS devices_user_idx;
+    ALTER TABLE devices DROP COLUMN user_id;
+  END IF;
+END $$;
 
 -- Time-series sensor packets, append-only. Ingested by the MindLabs webhook.
 CREATE TABLE IF NOT EXISTS device_packets (

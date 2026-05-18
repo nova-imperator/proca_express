@@ -2,18 +2,16 @@ import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AdminNav from '../../components/AdminNav.jsx';
 import { SkeletonRow } from '../../components/Skeleton.jsx';
-import ConfirmDangerDialog from '../../components/ConfirmDangerDialog.jsx';
 import { api } from '../../api';
 
 export default function AdminDevices() {
   const [devices, setDevices] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
   const [q, setQ] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [assigning, setAssigning] = useState(null);
-  const [unassigning, setUnassigning] = useState(null);
-  const [pendingUnassign, setPendingUnassign] = useState(false);
+  const [managing, setManaging] = useState(null);   // device whose assignments are being managed
 
   const load = async () => {
     setDevices(null);
@@ -24,7 +22,10 @@ export default function AdminDevices() {
       setDevices([]);
     }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.get('/api/admin/users').then((d) => setAllUsers(d.users || [])).catch(() => setAllUsers([]));
+  }, []);
 
   const onSync = async () => {
     setSyncing(true); setError(null); setSuccess(null);
@@ -39,27 +40,16 @@ export default function AdminDevices() {
     }
   };
 
-  const confirmUnassign = async () => {
-    if (!unassigning) return;
-    setPendingUnassign(true);
-    try {
-      await api.del(`/api/admin/devices/${unassigning.id}/assign`);
-      setUnassigning(null);
-      load();
-    } finally {
-      setPendingUnassign(false);
-    }
-  };
-
   const needle = q.trim().toLowerCase();
   const filtered = needle && devices
-    ? devices.filter((d) =>
-        [d.id, d.asset_name, d.personal_reference, d.user_name, d.user_email, d.type]
-          .some((v) => (v || '').toLowerCase().includes(needle))
-      )
+    ? devices.filter((d) => {
+        const userText = (d.users || []).map((u) => `${u.name || ''} ${u.email || ''}`).join(' ').toLowerCase();
+        return [d.id, d.asset_name, d.personal_reference, d.type, userText]
+          .some((v) => (v || '').toLowerCase().includes(needle));
+      })
     : devices;
 
-  const assignedCount = devices ? devices.filter((d) => d.user_id).length : 0;
+  const assignedCount = devices ? devices.filter((d) => (d.users || []).length > 0).length : 0;
 
   return (
     <>
@@ -125,10 +115,8 @@ export default function AdminDevices() {
                   <tr key={d.id} className="anim-in" style={{ animationDelay: `${Math.min(i * 18, 220)}ms` }}>
                     <td>
                       <div className="device-id-cell">
-                        <span
-                          className={`status-dot ${fresh ? 'live' : 'stale'}`}
-                          title={fresh ? 'Reported in last 24h' : 'No recent report'}
-                        />
+                        <span className={`status-dot ${fresh ? 'live' : 'stale'}`}
+                              title={fresh ? 'Reported in last 24h' : 'No recent report'} />
                         <div>
                           <div className="device-id-mono">{d.id}</div>
                           {(d.asset_name || d.personal_reference) && (
@@ -145,33 +133,18 @@ export default function AdminDevices() {
                       </span>
                     </td>
                     <td>
-                      {d.user_id ? (
-                        <div className="user-cell">
-                          <div className="avatar" style={{ background: avatarColor(d.user_email) }}>
-                            {initials(d.user_name || d.user_email)}
-                          </div>
-                          <div>
-                            <div className="user-name">{d.user_name || '—'}</div>
-                            <div className="user-email muted">{d.user_email}</div>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="chip-unassigned">Unassigned</span>
-                      )}
+                      <AssignedUsersCell users={d.users || []} />
                     </td>
                     <td>
                       <div className="row-actions">
-                        <Link to={`/admin/devices/${d.id}`} className="icon-btn" title="View all data" aria-label="View all data">
+                        <Link to={`/admin/devices/${d.id}`} className="icon-btn"
+                              title="View all data" aria-label="View all data">
                           <EyeIcon />
                         </Link>
-                        <button onClick={() => setAssigning(d)} className="icon-btn" title={d.user_id ? 'Reassign' : 'Assign'} aria-label={d.user_id ? 'Reassign' : 'Assign'}>
-                          {d.user_id ? <SwapIcon /> : <UserPlusIcon />}
+                        <button onClick={() => setManaging(d)} className="icon-btn"
+                                title="Manage assignments" aria-label="Manage assignments">
+                          <UsersIcon />
                         </button>
-                        {d.user_id && (
-                          <button onClick={() => setUnassigning(d)} className="icon-btn danger" title="Unassign" aria-label="Unassign">
-                            <UserMinusIcon />
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -182,86 +155,165 @@ export default function AdminDevices() {
         </div>
       </main>
 
-      {assigning && (
-        <AssignDialog
-          device={assigning}
-          onClose={() => setAssigning(null)}
-          onDone={() => { setAssigning(null); load(); }}
+      {managing && (
+        <ManageAssignmentsDialog
+          device={managing}
+          allUsers={allUsers}
+          onClose={() => setManaging(null)}
+          onChanged={() => load()}
         />
       )}
-
-      <ConfirmDangerDialog
-        open={!!unassigning}
-        title="Unassign device"
-        description={
-          <>
-            Remove <strong>{unassigning?.id}</strong> from{' '}
-            <strong>{unassigning?.user_name || unassigning?.user_email}</strong>.
-            They'll stop seeing it on their dashboard. Sensor history is kept and
-            the device can be reassigned anytime.
-          </>
-        }
-        confirmWord="unassign"
-        actionLabel="Unassign"
-        pending={pendingUnassign}
-        onConfirm={confirmUnassign}
-        onClose={() => !pendingUnassign && setUnassigning(null)}
-      />
     </>
   );
 }
 
-function AssignDialog({ device, onClose, onDone }) {
+// ---------- Cells ----------
+
+function AssignedUsersCell({ users }) {
+  if (!users || users.length === 0) {
+    return <span className="chip-unassigned">Unassigned</span>;
+  }
+  // 1 user → full card; 2+ users → stacked avatars + "+N more"
+  if (users.length === 1) {
+    const u = users[0];
+    return (
+      <div className="user-cell">
+        <div className="avatar" style={{ background: avatarColor(u.email) }}>{initials(u.name || u.email)}</div>
+        <div>
+          <div className="user-name">{u.name || '—'}</div>
+          <div className="user-email muted">{u.email}</div>
+        </div>
+      </div>
+    );
+  }
+  const shown = users.slice(0, 3);
+  const more = users.length - shown.length;
+  return (
+    <div className="user-cell">
+      <div className="avatar-stack" title={users.map((u) => u.name || u.email).join(', ')}>
+        {shown.map((u, i) => (
+          <div key={u.id} className="avatar avatar-sm" style={{ background: avatarColor(u.email), zIndex: shown.length - i }}>
+            {initials(u.name || u.email)}
+          </div>
+        ))}
+        {more > 0 && <div className="avatar avatar-sm avatar-more">+{more}</div>}
+      </div>
+      <div>
+        <div className="user-name">{users.length} users</div>
+        <div className="user-email muted">{shown.map((u) => u.name || u.email).join(', ')}{more > 0 ? `, +${more} more` : ''}</div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Manage Assignments dialog ----------
+
+function ManageAssignmentsDialog({ device, allUsers, onClose, onChanged }) {
   const dlgRef = useRef(null);
-  const [users, setUsers] = useState([]);
-  const [userId, setUserId] = useState(device.user_id || '');
+  // Local optimistic copy of the current assignments so adding/removing feels instant.
+  const [assigned, setAssigned] = useState(device.users || []);
+  const [pickUser, setPickUser] = useState('');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [pending, setPending] = useState(false);
 
-  useEffect(() => {
-    dlgRef.current?.showModal();
-    api.get('/api/admin/users').then((d) => setUsers(d.users || [])).catch(() => setUsers([]));
-  }, []);
+  useEffect(() => { dlgRef.current?.showModal(); }, []);
 
-  const onSubmit = async (e) => {
+  const assignedIds = new Set(assigned.map((u) => Number(u.id)));
+  const availableUsers = allUsers.filter((u) => !assignedIds.has(Number(u.id)));
+
+  const onAdd = async (e) => {
     e.preventDefault();
-    if (!userId) return setError('Pick a user.');
-    setPending(true); setError(null);
+    setError(null);
+    if (!pickUser) return;
+    const u = allUsers.find((x) => String(x.id) === String(pickUser));
+    if (!u) return;
+    setBusy(true);
     try {
-      await api.put(`/api/admin/devices/${device.id}/assign`, { user_id: userId });
-      onDone();
+      await api.post(`/api/admin/devices/${device.id}/assignments`, { user_id: u.id });
+      setAssigned((prev) => [...prev, { id: u.id, name: u.full_name || u.email, email: u.email }]);
+      setPickUser('');
+      onChanged();
     } catch (err) {
-      setError(err.data?.error || 'Failed to assign.');
+      setError(err.data?.error || 'Failed to add user.');
     } finally {
-      setPending(false);
+      setBusy(false);
+    }
+  };
+
+  const onRemove = async (userId) => {
+    setError(null);
+    setBusy(true);
+    try {
+      await api.del(`/api/admin/devices/${device.id}/assignments/${userId}`);
+      setAssigned((prev) => prev.filter((u) => Number(u.id) !== Number(userId)));
+      onChanged();
+    } catch (err) {
+      setError(err.data?.error || 'Failed to remove user.');
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
     <dialog ref={dlgRef} onClose={onClose}>
-      <form onSubmit={onSubmit} className="card" style={{ gap: '0.85rem', minWidth: 380 }}>
-        <h3 style={{ margin: 0 }}>Assign device {device.id}</h3>
-        <p className="muted" style={{ margin: 0 }}>
-          {device.user_id ? 'Currently assigned. Pick a new user to reassign.' : 'Pick a user to give them access.'}
+      <div className="card" style={{ gap: '1rem', minWidth: 420 }}>
+        <h3 style={{ margin: 0 }}>Manage assignments — <code style={{ fontFamily: 'ui-monospace, monospace' }}>{device.id}</code></h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.88rem' }}>
+          Multiple users can see the same device. Add or remove access here.
         </p>
-        <label>User
-          <select value={userId} onChange={(e) => setUserId(e.target.value)} required>
-            <option value="">— select user —</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {(u.full_name || '—')} · {u.email}
+
+        <div>
+          <div className="muted" style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+            Currently assigned ({assigned.length})
+          </div>
+          {assigned.length === 0 ? (
+            <div className="chip-unassigned" style={{ display: 'block', padding: '0.7rem', textAlign: 'center' }}>
+              No users — add one below.
+            </div>
+          ) : (
+            <ul className="assignment-list">
+              {assigned.map((u) => (
+                <li key={u.id}>
+                  <div className="user-cell">
+                    <div className="avatar avatar-sm" style={{ background: avatarColor(u.email) }}>{initials(u.name || u.email)}</div>
+                    <div>
+                      <div className="user-name">{u.name || '—'}</div>
+                      <div className="user-email muted">{u.email}</div>
+                    </div>
+                  </div>
+                  <button type="button" className="icon-btn danger" onClick={() => onRemove(u.id)}
+                          disabled={busy} title="Remove" aria-label="Remove">
+                    <XIcon />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <form onSubmit={onAdd} className="row" style={{ alignItems: 'flex-end', gap: '0.5rem' }}>
+          <label style={{ flex: 1 }}>
+            Add a user
+            <select value={pickUser} onChange={(e) => setPickUser(e.target.value)} disabled={busy || availableUsers.length === 0}>
+              <option value="">
+                {availableUsers.length === 0 ? 'All users already assigned' : '— select user —'}
               </option>
-            ))}
-          </select>
-        </label>
-        {error && <div className="notice error">{error}</div>}
-        <menu>
-          <button type="button" className="btn" onClick={() => dlgRef.current?.close()}>Cancel</button>
-          <button type="submit" className="btn primary" disabled={pending}>
-            {pending ? <><span className="spin" /> Saving…</> : 'Assign'}
+              {availableUsers.map((u) => (
+                <option key={u.id} value={u.id}>{(u.full_name || '—')} · {u.email}</option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className="btn primary" disabled={!pickUser || busy}>
+            {busy ? <><span className="spin" /> Adding…</> : 'Add'}
           </button>
+        </form>
+
+        {error && <div className="notice error">{error}</div>}
+
+        <menu>
+          <button type="button" className="btn" onClick={() => dlgRef.current?.close()}>Close</button>
         </menu>
-      </form>
+      </div>
     </dialog>
   );
 }
@@ -291,14 +343,11 @@ function initials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Deterministic colour from a string — same input always renders the same hue
-// so a user gets the same avatar background across the table.
 function avatarColor(seed) {
   if (!seed) return '#94a3b8';
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  return `hsl(${hue}deg 55% 48%)`;
+  return `hsl(${h % 360}deg 55% 48%)`;
 }
 
 // ---------- icons ----------
@@ -306,47 +355,32 @@ function avatarColor(seed) {
 function RefreshIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 0 1 15.5-6.3L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16" />
-      <path d="M3 21v-5h5" />
+      <path d="M3 12a9 9 0 0 1 15.5-6.3L21 8" /><path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16" /><path d="M3 21v-5h5" />
     </svg>
   );
 }
 function EyeIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
-function UserPlusIcon() {
+function UsersIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <line x1="19" y1="8" x2="19" y2="14" />
-      <line x1="22" y1="11" x2="16" y2="11" />
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 19c1-3 3.5-4.5 6.5-4.5s5.5 1.5 6.5 4.5" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M15 13.5c2.5 0 4.5 1.3 5 3.5" />
     </svg>
   );
 }
-function UserMinusIcon() {
+function XIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <line x1="22" y1="11" x2="16" y2="11" />
-    </svg>
-  );
-}
-function SwapIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 4l-4 4 4 4" />
-      <path d="M3 8h13a4 4 0 0 1 4 4v0" />
-      <path d="M17 20l4-4-4-4" />
-      <path d="M21 16H8a4 4 0 0 1-4-4v0" />
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" />
     </svg>
   );
 }
