@@ -157,7 +157,6 @@ export default function AdminDevices() {
 function AssignDialog({ device, onClose, onDone }) {
   const dlgRef = useRef(null);
   const [users, setUsers] = useState([]);
-  const [q, setQ] = useState('');
   const [userId, setUserId] = useState(device.user_id || '');
   const [error, setError] = useState(null);
   const [pending, setPending] = useState(false);
@@ -166,13 +165,6 @@ function AssignDialog({ device, onClose, onDone }) {
     dlgRef.current?.showModal();
     api.get('/api/admin/users').then((d) => setUsers(d.users || [])).catch(() => setUsers([]));
   }, []);
-
-  const filtered = q
-    ? users.filter((u) =>
-        [u.full_name, u.email, u.mobile]
-          .some((v) => (v || '').toLowerCase().includes(q.toLowerCase()))
-      )
-    : users;
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -195,14 +187,11 @@ function AssignDialog({ device, onClose, onDone }) {
         <p className="muted" style={{ margin: 0 }}>
           {device.user_id ? 'Currently assigned. Pick a new user to reassign.' : 'Pick a user to give them access.'}
         </p>
-        <label>Search users
-          <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, email, mobile…" />
-        </label>
         <label>User
           <select value={userId} onChange={(e) => setUserId(e.target.value)} required
                   style={{ padding: '0.55rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', font: 'inherit' }}>
             <option value="">— select user —</option>
-            {filtered.map((u) => (
+            {users.map((u) => (
               <option key={u.id} value={u.id}>
                 {(u.full_name || '—')} · {u.email}
               </option>
