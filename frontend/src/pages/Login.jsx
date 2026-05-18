@@ -84,10 +84,7 @@ export default function Login() {
             />
           </label>
 
-          <label>
-            Verify you're human
-            <Captcha ref={captchaRef} onChange={onCaptchaChange} />
-          </label>
+          <Captcha ref={captchaRef} onChange={onCaptchaChange} />
 
           <button type="submit" className="btn primary full" disabled={pending}>
             {pending ? <><span className="spin" /> Signing in…</> : 'Sign in'}

@@ -64,9 +64,7 @@ export default function AdminLogin() {
               autoComplete="current-password" placeholder="••••••••" required />
           </label>
 
-          <label>Verify you're human
-            <Captcha ref={captchaRef} onChange={onCaptchaChange} />
-          </label>
+          <Captcha ref={captchaRef} onChange={onCaptchaChange} />
 
           <button className="btn primary full" type="submit" disabled={pending}>
             {pending ? <><span className="spin" /> Signing in…</> : 'Sign in'}

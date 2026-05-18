@@ -77,9 +77,7 @@ export default function RegisterRequest() {
             <input type="text" value={form.company_gst} onChange={onChange('company_gst')} />
           </label>
 
-          <label>Verify you're human
-            <Captcha ref={captchaRef} onChange={onCaptchaChange} />
-          </label>
+          <Captcha ref={captchaRef} onChange={onCaptchaChange} />
 
           <button type="submit" className="btn primary full" disabled={pending}>
             {pending ? <><span className="spin" /> Submitting…</> : 'Submit request'}

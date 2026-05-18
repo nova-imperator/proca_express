@@ -1,40 +1,42 @@
-// Tiny homegrown math captcha.
-// - issue() picks two small numbers and an operator, signs the answer into a
-//   short-lived JWT, and returns the question + token to the client.
-// - verify() checks the JWT is well-formed, unexpired, and that the user's
-//   answer matches the signed `answer` claim.
+// SVG image captcha. The server renders an obfuscated math expression as an
+// SVG (lines/curves drawn through the glyphs to thwart simple OCR), signs the
+// answer into a short-lived JWT, and returns both. The client sends the token
+// + the user's typed answer; verify() rejects on bad signature, expiry, or
+// wrong answer.
 //
-// Why JWT instead of a server-side store? Stateless and pool-friendly: no
-// need to track captcha IDs across pm2 workers / restarts, no cleanup job.
+// Stateless by design: no captcha-id table to clean up across pm2 restarts.
 
 const jwt = require('jsonwebtoken');
+const svgCaptcha = require('svg-captcha');
 
-const TTL_SECONDS = 120;            // captcha must be solved within 2 min
-const CAPTCHA_AUD = 'pe-captcha';   // narrows token reuse (login won't accept a session token, etc.)
-
-function randInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+const TTL_SECONDS = 120;            // solve within 2 min
+const CAPTCHA_AUD = 'pe-captcha';   // narrows token reuse
 
 function issue() {
-  // Keep it accessible: single-digit addition or subtraction, never negative.
-  const op = Math.random() < 0.5 ? '+' : '-';
-  let a = randInt(2, 9);
-  let b = randInt(1, 9);
-  let answer;
-  if (op === '+') {
-    answer = a + b;
-  } else {
-    if (b > a) [a, b] = [b, a]; // ensure non-negative
-    answer = a - b;
-  }
-  const challenge = `What is ${a} ${op} ${b}?`;
+  // svg-captcha builds a single-digit `a op b` expression and returns the
+  // numeric answer as a string + the SVG markup. mathOperator restricts to
+  // + and - so the answer is always a small whole number.
+  const cap = svgCaptcha.createMathExpr({
+    mathMin: 1,
+    mathMax: 9,
+    mathOperator: '+-',
+    background: '#0f172a',  // dark slate; matches our admin header palette
+    color: false,           // single-colour text reads cleaner against dark bg
+    noise: 2,               // crossing curves
+    width: 150,
+    height: 50,
+    fontSize: 56,
+  });
+
   const token = jwt.sign(
-    { answer, aud: CAPTCHA_AUD },
+    { answer: String(cap.text), aud: CAPTCHA_AUD },
     process.env.JWT_SECRET,
     { expiresIn: TTL_SECONDS }
   );
-  return { token, challenge };
+
+  // Return SVG as a data URL so the client can drop it straight into <img>.
+  const svgDataUrl = `data:image/svg+xml;base64,${Buffer.from(cap.data).toString('base64')}`;
+  return { token, image: svgDataUrl };
 }
 
 function verify(token, userAnswer) {
@@ -45,9 +47,9 @@ function verify(token, userAnswer) {
   } catch (err) {
     return { ok: false, error: err.name === 'TokenExpiredError' ? 'captcha_expired' : 'captcha_invalid' };
   }
-  const expected = Number(payload.answer);
-  const got = Number(String(userAnswer || '').trim());
-  if (!Number.isFinite(got) || got !== expected) {
+  const expected = String(payload.answer).trim();
+  const got = String(userAnswer || '').trim();
+  if (!expected || got !== expected) {
     return { ok: false, error: 'captcha_wrong' };
   }
   return { ok: true };
