@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import UserNav from '../components/UserNav.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { SkeletonLine } from '../components/Skeleton.jsx';
+import { SkeletonRow } from '../components/Skeleton.jsx';
 import { api } from '../api';
 
 export default function Home() {
@@ -32,13 +32,7 @@ export default function Home() {
           </p>
         </div>
 
-        {devices === null ? (
-          <div className="device-grid stagger">
-            <DeviceCardSkeleton />
-            <DeviceCardSkeleton />
-            <DeviceCardSkeleton />
-          </div>
-        ) : devices.length === 0 ? (
+        {devices !== null && devices.length === 0 ? (
           <div className="card empty-state anim-in anim-d1">
             <DeviceIcon big />
             <p style={{ marginTop: '0.75rem', fontWeight: 600, color: 'var(--fg-soft)' }}>
@@ -49,73 +43,62 @@ export default function Home() {
             </p>
           </div>
         ) : (
-          <div className="device-grid stagger">
-            {devices.map((d) => <DeviceCard key={d.id} d={d} />)}
+          <div className="card anim-in anim-d1" style={{ padding: 0 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Device ID</th>
+                  <th>Asset</th>
+                  <th>Status</th>
+                  <th>Last temp</th>
+                  <th>Battery</th>
+                  <th>Last seen</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {devices === null ? (
+                  <>
+                    <SkeletonRow cols={7} />
+                    <SkeletonRow cols={7} />
+                    <SkeletonRow cols={7} />
+                  </>
+                ) : devices.map((d, i) => {
+                  const fresh = d.last_seen_at &&
+                    (Date.now() - new Date(d.last_seen_at).getTime() < 24 * 3600 * 1000);
+                  return (
+                    <tr key={d.id} className="anim-in" style={{ animationDelay: `${Math.min(i * 25, 280)}ms` }}>
+                      <td style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 500 }}>{d.id}</td>
+                      <td>{d.asset_name || d.personal_reference || d.type || '—'}</td>
+                      <td>
+                        <span className={`badge ${fresh ? 'active' : 'disabled'}`} title={fresh ? 'Reported in last 24h' : 'No recent report'}>
+                          {fresh ? 'live' : 'stale'}
+                        </span>
+                      </td>
+                      <td>
+                        {d.last_temp_i != null ? `${d.last_temp_i}°C` : '—'}
+                        {d.last_humid_i != null && (
+                          <span className="muted" style={{ fontSize: '0.78rem', marginLeft: 6 }}>
+                            · {d.last_humid_i}%
+                          </span>
+                        )}
+                      </td>
+                      <td>{d.last_battery != null ? `${d.last_battery}%` : '—'}</td>
+                      <td>{d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : '—'}</td>
+                      <td className="actions">
+                        <Link to={`/devices/${d.id}`}>View all data</Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </main>
     </>
   );
 }
-
-function DeviceCard({ d }) {
-  const fresh = d.last_seen_at && (Date.now() - new Date(d.last_seen_at).getTime() < 24 * 3600 * 1000);
-  return (
-    <Link to={`/devices/${d.id}`} className="device-card" aria-label={`Open device ${d.id}`}>
-      <div className="device-card-head">
-        <div>
-          <div className="device-id">{d.id}</div>
-          <div className="muted device-asset">{d.asset_name || d.personal_reference || d.type || 'Tracker'}</div>
-        </div>
-        <span className={`badge ${fresh ? 'active' : 'disabled'}`} title={fresh ? 'Reported in last 24h' : 'No recent report'}>
-          {fresh ? 'live' : 'stale'}
-        </span>
-      </div>
-      <div className="device-card-stats">
-        <Stat label="Temp"   value={d.last_temp_i != null  ? `${d.last_temp_i}°C` : '—'} />
-        <Stat label="Humid"  value={d.last_humid_i != null ? `${d.last_humid_i}%` : '—'} />
-        <Stat label="Battery" value={d.last_battery != null ? `${d.last_battery}%` : '—'} />
-      </div>
-      <div className="device-card-foot muted">
-        <span>{d.last_address ? truncate(d.last_address, 60) : '—'}</span>
-        <span>{d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'never'}</span>
-      </div>
-    </Link>
-  );
-}
-
-function Stat({ label, value }) {
-  return (
-    <div className="device-stat">
-      <div className="device-stat-label">{label}</div>
-      <div className="device-stat-value">{value}</div>
-    </div>
-  );
-}
-
-function DeviceCardSkeleton() {
-  return (
-    <div className="device-card" aria-hidden="true">
-      <div className="device-card-head">
-        <div style={{ width: '100%' }}>
-          <SkeletonLine width="40%" />
-          <div style={{ height: 6 }} />
-          <SkeletonLine width="60%" height="0.7rem" />
-        </div>
-      </div>
-      <div className="device-card-stats">
-        <SkeletonLine height="2rem" />
-        <SkeletonLine height="2rem" />
-        <SkeletonLine height="2rem" />
-      </div>
-      <div className="device-card-foot">
-        <SkeletonLine width="80%" />
-      </div>
-    </div>
-  );
-}
-
-function truncate(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
 
 function DeviceIcon({ big }) {
   const size = big ? 44 : 24;

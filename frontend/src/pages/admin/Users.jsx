@@ -90,7 +90,6 @@ export default function AdminUsers() {
                   </td>
                   <td className="actions">
                     <Link to={`/admin/edit-user/${u.id}`}>Edit</Link>
-                    <Link to={`/admin/edit-user/${u.id}`}>Manage</Link>
                     <button className="danger" onClick={() => onDelete(u.id)}>Delete</button>
                   </td>
                 </tr>
