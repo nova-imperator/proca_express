@@ -1,46 +1,60 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useLocation } from 'react-router-dom';
 import UserNav from '../components/UserNav.jsx';
+import AdminNav from '../components/AdminNav.jsx';
 import { SkeletonLine, SkeletonRow } from '../components/Skeleton.jsx';
 import { api } from '../api';
 
+// Dual-mode device detail page.
+// - /devices/:id        → user view; calls /api/devices/:id (ownership-gated)
+// - /admin/devices/:id  → admin view; calls /api/admin/devices/:id (any device)
+// The two paths render the same body, just with the matching nav + back-link.
 export default function DeviceDetail() {
   const { id } = useParams();
+  const loc = useLocation();
+  const isAdmin = loc.pathname.startsWith('/admin/');
+  const Nav = isAdmin ? AdminNav : UserNav;
+  const backTo = isAdmin ? '/admin/devices' : '/home';
+  const backLabel = isAdmin ? 'Devices' : 'Dashboard';
+
   const [data, setData] = useState(null);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    api.get(`/api/devices/${id}`)
+    const path = isAdmin ? `/api/admin/devices/${id}` : `/api/devices/${id}`;
+    api.get(path)
       .then((d) => setData(d))
       .catch((err) => { if (err.status === 404) setNotFound(true); });
-  }, [id]);
+  }, [id, isAdmin]);
 
   if (notFound) {
     return (
       <>
-        <UserNav />
+        <Nav />
         <main className="container narrow">
           <h1 className="page-title">Device not found</h1>
-          <p className="page-sub">This device isn't linked to your account.</p>
-          <Link className="btn" to="/home">← Back to dashboard</Link>
+          <p className="page-sub">
+            {isAdmin ? "This device isn't in the catalog." : "This device isn't linked to your account."}
+          </p>
+          <Link className="btn" to={backTo}>← Back to {backLabel.toLowerCase()}</Link>
         </main>
       </>
     );
   }
 
-  if (!data) return <DeviceDetailSkeleton />;
+  if (!data) return <DeviceDetailSkeleton isAdmin={isAdmin} />;
   const { device, packets, summary_24h } = data;
 
   const fresh = device.last_seen_at && (Date.now() - new Date(device.last_seen_at).getTime() < 24 * 3600 * 1000);
 
   return (
     <>
-      <UserNav />
+      <Nav />
       <main className="container">
         <div className="row-between anim-in-down" style={{ marginBottom: '1rem' }}>
           <div>
             <p className="muted" style={{ margin: 0 }}>
-              <Link to="/home" className="inline-link">← Dashboard</Link>
+              <Link to={backTo} className="inline-link">← {backLabel}</Link>
             </p>
             <h1 className="page-title" style={{ fontFamily: 'ui-monospace, monospace' }}>{device.id}</h1>
             <p className="page-sub" style={{ marginBottom: 0 }}>
@@ -48,6 +62,14 @@ export default function DeviceDetail() {
               <span className={`badge ${fresh ? 'active' : 'disabled'}`} style={{ marginLeft: 8 }}>
                 {fresh ? 'live' : 'stale'}
               </span>
+              {isAdmin && device.user_email && (
+                <span className="muted" style={{ marginLeft: 12, fontSize: '0.85rem' }}>
+                  · assigned to {device.user_name || device.user_email}
+                </span>
+              )}
+              {isAdmin && !device.user_id && (
+                <span className="badge disabled" style={{ marginLeft: 8 }}>unassigned</span>
+              )}
             </p>
           </div>
         </div>
@@ -147,10 +169,11 @@ function Agg({ label, value }) {
   );
 }
 
-function DeviceDetailSkeleton() {
+function DeviceDetailSkeleton({ isAdmin }) {
+  const Nav = isAdmin ? AdminNav : UserNav;
   return (
     <>
-      <UserNav />
+      <Nav />
       <main className="container">
         <div style={{ marginBottom: '1rem' }}>
           <SkeletonLine width="120px" />

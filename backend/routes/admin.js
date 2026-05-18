@@ -363,6 +363,52 @@ router.post('/devices/sync', async (_req, res) => {
   res.json({ ok: true, synced: upserted, total_returned: list.length });
 });
 
+// GET /api/admin/devices/:id — full detail for any device (no ownership filter)
+router.get('/devices/:id', async (req, res) => {
+  const id = String(req.params.id);
+  const dev = await query(
+    `SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state, d.org_id,
+            d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
+            d.last_lat, d.last_lng, d.last_address, d.raw_meta,
+            d.user_id, u.full_name AS user_name, u.email AS user_email
+       FROM devices d
+       LEFT JOIN users u ON u.id = d.user_id
+      WHERE d.id = $1`,
+    [id]
+  );
+  if (!dev.rows[0]) return res.status(404).json({ error: 'not_found' });
+
+  const [packets, agg24h] = await Promise.all([
+    query(
+      `SELECT packet_time, battery, time_interval, temp_i, temp_p1, humid_i,
+              lat, lng, formatted_address
+         FROM device_packets
+        WHERE device_id = $1
+        ORDER BY packet_time DESC
+        LIMIT 200`,
+      [id]
+    ),
+    query(
+      `SELECT COUNT(*)::int AS packet_count,
+              AVG(temp_i)::numeric(10,2) AS avg_temp_i,
+              MIN(temp_i)::numeric(10,2) AS min_temp_i,
+              MAX(temp_i)::numeric(10,2) AS max_temp_i,
+              AVG(humid_i)::numeric(10,2) AS avg_humid_i,
+              MIN(battery)::int           AS min_battery,
+              MAX(packet_time)            AS latest_packet
+         FROM device_packets
+        WHERE device_id = $1 AND packet_time > NOW() - INTERVAL '24 hours'`,
+      [id]
+    ),
+  ]);
+
+  res.json({
+    device: dev.rows[0],
+    packets: packets.rows,
+    summary_24h: agg24h.rows[0],
+  });
+});
+
 // PUT /api/admin/devices/:id/assign   body: { user_id }
 router.put('/devices/:id/assign', async (req, res) => {
   const userId = req.body?.user_id;

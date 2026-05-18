@@ -68,6 +68,7 @@ export default function App() {
             <Route path="/admin/home" element={<AdminOnly><AdminDashboard /></AdminOnly>} />
             <Route path="/admin/users" element={<AdminOnly><AdminUsers /></AdminOnly>} />
             <Route path="/admin/devices" element={<AdminOnly><AdminDevices /></AdminOnly>} />
+            <Route path="/admin/devices/:id" element={<AdminOnly><DeviceDetail /></AdminOnly>} />
             <Route path="/admin/register-requests" element={<AdminOnly><RegisterRequests /></AdminOnly>} />
             <Route path="/admin/add-user" element={<AdminOnly><AddUser /></AdminOnly>} />
             <Route path="/admin/edit-user/:id" element={<AdminOnly><EditUser /></AdminOnly>} />

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import AdminNav from '../../components/AdminNav.jsx';
 import { SkeletonRow } from '../../components/Skeleton.jsx';
 import { api } from '../../api';
@@ -82,11 +83,7 @@ export default function AdminDevices() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Type</th>
-                <th>Asset / Reference</th>
                 <th>Last seen</th>
-                <th>Battery</th>
-                <th>Temp / Hum</th>
                 <th>Assigned to</th>
                 <th>Actions</th>
               </tr>
@@ -94,30 +91,18 @@ export default function AdminDevices() {
             <tbody>
               {devices === null ? (
                 <>
-                  <SkeletonRow cols={8} />
-                  <SkeletonRow cols={8} />
-                  <SkeletonRow cols={8} />
+                  <SkeletonRow cols={4} />
+                  <SkeletonRow cols={4} />
+                  <SkeletonRow cols={4} />
                 </>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="muted" style={{ padding: '2rem', textAlign: 'center' }}>
+                <tr><td colSpan={4} className="muted" style={{ padding: '2rem', textAlign: 'center' }}>
                   {needle ? 'No matches.' : 'No devices yet — click "Sync from MindLabs" to pull the catalog.'}
                 </td></tr>
               ) : filtered.map((d, i) => (
                 <tr key={d.id} className="anim-in" style={{ animationDelay: `${Math.min(i * 25, 280)}ms` }}>
                   <td style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 500 }}>{d.id}</td>
-                  <td>{d.type || '—'}</td>
-                  <td>
-                    <div>{d.asset_name || '—'}</div>
-                    {d.personal_reference && (
-                      <div className="muted" style={{ fontSize: '0.78rem' }}>{d.personal_reference}</div>
-                    )}
-                  </td>
                   <td>{d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : '—'}</td>
-                  <td>{d.last_battery != null ? `${d.last_battery}%` : '—'}</td>
-                  <td>
-                    {d.last_temp_i != null ? `${d.last_temp_i}°C` : '—'}
-                    {d.last_humid_i != null && <span className="muted"> · {d.last_humid_i}%</span>}
-                  </td>
                   <td>
                     {d.user_id ? (
                       <>
@@ -129,6 +114,7 @@ export default function AdminDevices() {
                     )}
                   </td>
                   <td className="actions">
+                    <Link to={`/admin/devices/${d.id}`}>View all data</Link>
                     <button onClick={() => setAssigning(d)}>
                       {d.user_id ? 'Reassign' : 'Assign'}
                     </button>
