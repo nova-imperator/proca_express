@@ -38,6 +38,9 @@ const { query, pool } = require('../config/db');
 //      envelope, we can always reprocess later.
 
 const ALLOWED_TYPES = new Set(['packets']);
+// Defensive cap. MindLabs typically batches a handful of packets per webhook;
+// a payload with thousands likely indicates a misconfiguration or replay loop.
+const MAX_PACKETS_PER_ENVELOPE = 1000;
 
 router.post('/mindlabs/webhook', async (req, res) => {
   const expectedToken = process.env.MINDLABS_WEBHOOK_TOKEN;
@@ -62,6 +65,9 @@ router.post('/mindlabs/webhook', async (req, res) => {
   }
   if (!data.id || !packets.length) {
     return res.status(202).json({ ok: true, ignored: 'empty', audit_id: auditId });
+  }
+  if (packets.length > MAX_PACKETS_PER_ENVELOPE) {
+    return res.status(413).json({ error: 'too_many_packets', limit: MAX_PACKETS_PER_ENVELOPE, audit_id: auditId });
   }
 
   try {

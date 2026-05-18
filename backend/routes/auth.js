@@ -31,13 +31,17 @@ router.post('/login', async (req, res) => {
   const cap = captcha.verify(req.body?.captcha_token, req.body?.captcha_answer);
   if (!cap.ok) return res.status(400).json({ error: cap.error });
 
-  // Match by email (case-insensitive) OR by mobile, comparing the digits only
-  // on both sides so "+91 8929023900" and "8929023900" both work.
+  // Match by email (case-insensitive) OR by mobile. For mobile we compare the
+  // last 10 digits of both stored and input — so "+91 8929023900" and
+  // "8929023900" both match a row stored as either form.
   const digitsOnly = identifier.replace(/\D/g, '');
   const { rows } = await query(
     `SELECT id, email, mobile, full_name, password_hash, is_active FROM users
        WHERE LOWER(email) = $1
-          OR regexp_replace(mobile, '\\D', '', 'g') = $2
+          OR (
+               LENGTH($2) >= 10
+               AND RIGHT(regexp_replace(mobile, '\\D', '', 'g'), 10) = RIGHT($2, 10)
+             )
        LIMIT 1`,
     [identifier, digitsOnly]
   );

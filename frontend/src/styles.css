@@ -248,6 +248,72 @@ input::placeholder { color: var(--muted-2); }
 
 .empty-state { text-align: center; color: var(--muted); padding: 3rem 1rem; }
 
+/* ============================================================
+ * Device cards (user dashboard)
+ * ============================================================ */
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.device-card {
+  display: flex; flex-direction: column; gap: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.2rem;
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: transform .12s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.device-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+.device-card-head {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;
+}
+.device-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+}
+.device-asset { font-size: 0.85rem; margin-top: 0.1rem; }
+.device-card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+.device-stat {
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+}
+.device-stat-label {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); font-weight: 500;
+}
+.device-stat-value {
+  font-size: 1.15rem; font-weight: 600;
+  margin-top: 2px; color: var(--fg);
+}
+.device-card-foot {
+  display: flex; justify-content: space-between; gap: 0.5rem;
+  font-size: 0.78rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+
+/* Aggregate stats grid (device detail "Last 24h") */
+.agg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
 /* ========== Dialog (forgot password) ========== */
 dialog {
   border: none; border-radius: var(--radius-lg);

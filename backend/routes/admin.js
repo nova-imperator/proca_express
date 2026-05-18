@@ -9,6 +9,7 @@ const {
   clearAuthCookies,
 } = require('../middleware/auth');
 const captcha = require('../utils/captcha');
+const mindlabs = require('../utils/mindlabs');
 
 // ---------- Admin auth ----------
 
@@ -56,7 +57,9 @@ router.get('/stats', async (_req, res) => {
       SELECT
         (SELECT COUNT(*)::int FROM users WHERE is_active) AS active_users,
         (SELECT COUNT(*)::int FROM register_requests WHERE status = 'pending') AS pending_requests,
-        (SELECT COUNT(*)::int FROM devices) AS device_count
+        (SELECT COUNT(*)::int FROM devices) AS device_count,
+        (SELECT COUNT(*)::int FROM devices WHERE user_id IS NOT NULL) AS assigned_device_count,
+        (SELECT COUNT(*)::int FROM devices WHERE last_seen_at > NOW() - INTERVAL '24 hours') AS active_devices_24h
     `),
     query(`
       SELECT id, email, mobile, full_name, status, created_at
@@ -248,5 +251,122 @@ router.delete('/users/:id', async (req, res) => {
   if (result.rowCount === 0) return res.status(404).json({ error: 'not_found' });
   res.json({ ok: true });
 });
+
+// ============================================================
+// Devices (mirror of MindLabs catalog)
+// ============================================================
+
+// GET /api/admin/devices — list of devices (from our DB), with assigned user
+router.get('/devices', async (_req, res) => {
+  const { rows } = await query(`
+    SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state,
+           d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
+           d.last_lat, d.last_lng, d.last_address,
+           d.user_id, u.full_name AS user_name, u.email AS user_email
+      FROM devices d
+      LEFT JOIN users u ON u.id = d.user_id
+     ORDER BY d.updated_at DESC
+  `);
+  res.json({ devices: rows });
+});
+
+// POST /api/admin/devices/sync — pull from MindLabs and upsert into our DB
+router.post('/devices/sync', async (_req, res) => {
+  let data;
+  try {
+    data = await mindlabs.getDevices({ config: true });
+  } catch (err) {
+    return res.status(err.status || 502).json({
+      error: 'mindlabs_sync_failed',
+      message: err.message,
+    });
+  }
+  const list = Array.isArray(data?.data) ? data.data : [];
+
+  const client = await pool.connect();
+  let upserted = 0;
+  try {
+    await client.query('BEGIN');
+    for (const d of list) {
+      if (!d?.id) continue;
+      const last = d.lastUpdate || {};
+      const lloc = d.lastUpdateLocation || {};
+      const lastSeenSec = Number(last.timestamp) || Number(lloc.timestamp);
+      await client.query(
+        `INSERT INTO devices (id, type, org_id, state, raw_meta,
+            last_seen_at, last_battery, last_temp_i, last_humid_i,
+            last_lat, last_lng, last_address)
+         VALUES ($1,$2,$3,$4,$5,
+                 CASE WHEN $6::bigint IS NULL THEN NULL ELSE to_timestamp($6) END,
+                 $7,$8,$9,$10,$11,$12)
+         ON CONFLICT (id) DO UPDATE SET
+            type        = COALESCE(EXCLUDED.type, devices.type),
+            org_id      = COALESCE(EXCLUDED.org_id, devices.org_id),
+            state       = COALESCE(EXCLUDED.state, devices.state),
+            raw_meta    = EXCLUDED.raw_meta,
+            last_seen_at = COALESCE(EXCLUDED.last_seen_at, devices.last_seen_at),
+            last_battery = COALESCE(EXCLUDED.last_battery, devices.last_battery),
+            last_temp_i  = COALESCE(EXCLUDED.last_temp_i, devices.last_temp_i),
+            last_humid_i = COALESCE(EXCLUDED.last_humid_i, devices.last_humid_i),
+            last_lat     = COALESCE(EXCLUDED.last_lat, devices.last_lat),
+            last_lng     = COALESCE(EXCLUDED.last_lng, devices.last_lng),
+            last_address = COALESCE(EXCLUDED.last_address, devices.last_address)`,
+        [
+          d.id, d.type || null, d.orgId || null, d.state || null, d,
+          Number.isFinite(lastSeenSec) ? lastSeenSec : null,
+          numOr(last.battery ?? lloc.battery),
+          numOr(last.tempI),
+          numOr(last.humidI),
+          numOr(lloc.lat),
+          numOr(lloc.lng),
+          lloc.formatted_address || null,
+        ]
+      );
+      upserted++;
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  res.json({ ok: true, synced: upserted, total_returned: list.length });
+});
+
+// PUT /api/admin/devices/:id/assign   body: { user_id }
+router.put('/devices/:id/assign', async (req, res) => {
+  const userId = req.body?.user_id;
+  if (userId === null || userId === '' || userId === undefined) {
+    return res.status(400).json({ error: 'missing_user_id' });
+  }
+  // Verify user exists.
+  const u = await query('SELECT id FROM users WHERE id = $1', [userId]);
+  if (!u.rows[0]) return res.status(404).json({ error: 'user_not_found' });
+
+  const { rows } = await query(
+    'UPDATE devices SET user_id = $1 WHERE id = $2 RETURNING id, user_id',
+    [userId, req.params.id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'device_not_found' });
+  res.json({ ok: true, device: rows[0] });
+});
+
+// DELETE /api/admin/devices/:id/assign — un-assign
+router.delete('/devices/:id/assign', async (req, res) => {
+  const { rows } = await query(
+    'UPDATE devices SET user_id = NULL WHERE id = $1 RETURNING id',
+    [req.params.id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'device_not_found' });
+  res.json({ ok: true });
+});
+
+function numOr(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 
 module.exports = router;

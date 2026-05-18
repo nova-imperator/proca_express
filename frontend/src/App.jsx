@@ -13,9 +13,11 @@ import ResetPassword from './pages/ResetPassword.jsx';
 // the surface they actually visit. The Suspense fallback below shows the top
 // progress bar while a chunk is in flight.
 const Home              = lazy(() => import('./pages/Home.jsx'));
+const DeviceDetail      = lazy(() => import('./pages/DeviceDetail.jsx'));
 const AdminLogin        = lazy(() => import('./pages/admin/Login.jsx'));
 const AdminDashboard    = lazy(() => import('./pages/admin/Dashboard.jsx'));
 const AdminUsers        = lazy(() => import('./pages/admin/Users.jsx'));
+const AdminDevices      = lazy(() => import('./pages/admin/Devices.jsx'));
 const AddUser           = lazy(() => import('./pages/admin/AddUser.jsx'));
 const EditUser          = lazy(() => import('./pages/admin/EditUser.jsx'));
 const RegisterRequests  = lazy(() => import('./pages/admin/RegisterRequests.jsx'));
@@ -60,10 +62,12 @@ export default function App() {
             <Route path="/register-request" element={<RegisterRequest />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/home" element={<UserOnly><Home /></UserOnly>} />
+            <Route path="/devices/:id" element={<UserOnly><DeviceDetail /></UserOnly>} />
 
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/home" element={<AdminOnly><AdminDashboard /></AdminOnly>} />
             <Route path="/admin/users" element={<AdminOnly><AdminUsers /></AdminOnly>} />
+            <Route path="/admin/devices" element={<AdminOnly><AdminDevices /></AdminOnly>} />
             <Route path="/admin/register-requests" element={<AdminOnly><RegisterRequests /></AdminOnly>} />
             <Route path="/admin/add-user" element={<AdminOnly><AddUser /></AdminOnly>} />
             <Route path="/admin/edit-user/:id" element={<AdminOnly><EditUser /></AdminOnly>} />

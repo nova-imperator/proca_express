@@ -2,15 +2,97 @@ const express = require('express');
 const router = express.Router();
 const { requireUser } = require('../middleware/auth');
 const { query } = require('../config/db');
+const mindlabs = require('../utils/mindlabs');
 
-// GET /api/devices — placeholder until the devices feature lands
+// GET /api/devices — list of devices assigned to the signed-in user
 router.get('/devices', requireUser, async (req, res) => {
   const { rows } = await query(
-    `SELECT id, device_name, imei, status, last_seen_at
-       FROM devices WHERE user_id = $1 ORDER BY created_at DESC`,
+    `SELECT id, type, asset_name, personal_reference, state,
+            last_seen_at, last_battery, last_temp_i, last_humid_i,
+            last_lat, last_lng, last_address
+       FROM devices
+      WHERE user_id = $1
+      ORDER BY last_seen_at DESC NULLS LAST, id`,
     [req.user.id]
   );
   res.json({ devices: rows });
+});
+
+// GET /api/devices/:id — detail + recent packet history
+//
+// Validates ownership: a user can only see devices assigned to them. Returns
+// summary, last N packets from our cache, and a 24h aggregate.
+router.get('/devices/:id', requireUser, async (req, res) => {
+  const id = String(req.params.id);
+  const own = await query(
+    `SELECT id, type, asset_name, personal_reference, state,
+            last_seen_at, last_battery, last_temp_i, last_humid_i,
+            last_lat, last_lng, last_address, raw_meta
+       FROM devices
+      WHERE id = $1 AND user_id = $2`,
+    [id, req.user.id]
+  );
+  if (!own.rows[0]) return res.status(404).json({ error: 'not_found' });
+
+  const [packets, agg24h] = await Promise.all([
+    query(
+      `SELECT packet_time, battery, time_interval, temp_i, temp_p1, humid_i,
+              lat, lng, formatted_address
+         FROM device_packets
+        WHERE device_id = $1
+        ORDER BY packet_time DESC
+        LIMIT 200`,
+      [id]
+    ),
+    query(
+      `SELECT COUNT(*)::int AS packet_count,
+              AVG(temp_i)::numeric(10,2) AS avg_temp_i,
+              MIN(temp_i)::numeric(10,2) AS min_temp_i,
+              MAX(temp_i)::numeric(10,2) AS max_temp_i,
+              AVG(humid_i)::numeric(10,2) AS avg_humid_i,
+              MIN(battery)::int           AS min_battery,
+              MAX(packet_time)            AS latest_packet
+         FROM device_packets
+        WHERE device_id = $1 AND packet_time > NOW() - INTERVAL '24 hours'`,
+      [id]
+    ),
+  ]);
+
+  res.json({
+    device: own.rows[0],
+    packets: packets.rows,
+    summary_24h: agg24h.rows[0],
+  });
+});
+
+// GET /api/devices/:id/packets?start=...&end=... — fetch directly from MindLabs
+// for a wider time window than we have cached locally. Useful for exporting or
+// drilling deeper than 200 rows. Time params are unix seconds.
+router.get('/devices/:id/packets', requireUser, async (req, res) => {
+  const id = String(req.params.id);
+  // ownership gate first
+  const own = await query('SELECT 1 FROM devices WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+  if (!own.rows[0]) return res.status(404).json({ error: 'not_found' });
+
+  const start = Number(req.query.start);
+  const end = Number(req.query.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return res.status(400).json({ error: 'bad_time_range' });
+  }
+  // Cap range to 14 days so we don't fetch huge payloads.
+  if (end - start > 14 * 24 * 3600) {
+    return res.status(400).json({ error: 'range_too_large', max_seconds: 14 * 24 * 3600 });
+  }
+
+  try {
+    const data = await mindlabs.getPackets({ deviceId: id, startTime: start, endTime: end });
+    res.json({ packets: Array.isArray(data?.data) ? data.data : [] });
+  } catch (err) {
+    res.status(err.status || 502).json({
+      error: 'mindlabs_fetch_failed',
+      message: err.message,
+    });
+  }
 });
 
 module.exports = router;
