@@ -1,20 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AdminNav from '../../components/AdminNav.jsx';
+import { SkeletonRow } from '../../components/Skeleton.jsx';
 import { api } from '../../api';
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState(null);
   const [q, setQ] = useState('');
 
   const load = async () => {
-    setLoading(true);
+    setUsers(null);
     try {
       const d = await api.get('/api/admin/users');
       setUsers(d.users || []);
-    } finally {
-      setLoading(false);
+    } catch {
+      setUsers([]);
     }
   };
   useEffect(() => { load(); }, []);
@@ -26,7 +26,7 @@ export default function AdminUsers() {
   };
 
   const needle = q.trim().toLowerCase();
-  const filtered = needle
+  const filtered = needle && users
     ? users.filter((u) =>
         [u.full_name, u.email, u.mobile].some((v) => (v || '').toLowerCase().includes(needle))
       )
@@ -36,10 +36,12 @@ export default function AdminUsers() {
     <>
       <AdminNav />
       <main className="container">
-        <div className="row-between" style={{ marginBottom: '1rem' }}>
+        <div className="row-between anim-in-down" style={{ marginBottom: '1rem' }}>
           <div>
             <h1 className="page-title">Users</h1>
-            <p className="page-sub" style={{ marginBottom: 0 }}>{users.length} total</p>
+            <p className="page-sub" style={{ marginBottom: 0 }}>
+              {users === null ? '—' : `${users.length} total`}
+            </p>
           </div>
           <div className="row">
             <input
@@ -53,7 +55,7 @@ export default function AdminUsers() {
           </div>
         </div>
 
-        <div className="card" style={{ padding: 0 }}>
+        <div className="card anim-in anim-d1" style={{ padding: 0 }}>
           <table className="data-table">
             <thead>
               <tr>
@@ -65,14 +67,19 @@ export default function AdminUsers() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan={5} className="muted" style={{ padding: '1.5rem' }}>Loading…</td></tr>
+              {users === null ? (
+                <>
+                  <SkeletonRow cols={5} />
+                  <SkeletonRow cols={5} />
+                  <SkeletonRow cols={5} />
+                  <SkeletonRow cols={5} />
+                </>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={5} className="muted" style={{ padding: '2rem', textAlign: 'center' }}>
                   {needle ? 'No matches.' : 'No users yet — click "Add user" to create the first one.'}
                 </td></tr>
-              ) : filtered.map((u) => (
-                <tr key={u.id}>
+              ) : filtered.map((u, i) => (
+                <tr key={u.id} className="anim-in" style={{ animationDelay: `${Math.min(i * 25, 280)}ms` }}>
                   <td style={{ fontWeight: 500 }}>{u.full_name || '—'}</td>
                   <td>{u.email}</td>
                   <td>{u.mobile}</td>

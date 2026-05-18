@@ -1,43 +1,62 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AdminNav from '../../components/AdminNav.jsx';
+import { SkeletonStat, SkeletonRow } from '../../components/Skeleton.jsx';
 import { api } from '../../api';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
-  const [recent, setRecent] = useState([]);
+  const [recent, setRecent] = useState(null);
 
   useEffect(() => {
     api.get('/api/admin/stats')
       .then((d) => { setStats(d.stats); setRecent(d.recent_requests || []); })
-      .catch(() => { setStats(null); setRecent([]); });
+      .catch(() => { setStats({}); setRecent([]); });
   }, []);
+
+  const loading = stats === null;
 
   return (
     <>
       <AdminNav />
       <main className="container">
-        <h1 className="page-title">Dashboard</h1>
-        <p className="page-sub">Snapshot of activity across the platform.</p>
+        <h1 className="page-title anim-in-down">Dashboard</h1>
+        <p className="page-sub anim-fade anim-d1">Snapshot of activity across the platform.</p>
 
-        <div className="stat-grid">
-          <Stat label="Active users"             value={stats?.active_users}     icon={<UsersIcon />} />
-          <Stat label="Pending register requests" value={stats?.pending_requests} icon={<InboxIcon />} />
-          <Stat label="Devices"                  value={stats?.device_count}     icon={<DeviceIcon />} />
+        <div className="stat-grid stagger">
+          {loading ? (
+            <>
+              <SkeletonStat />
+              <SkeletonStat />
+              <SkeletonStat />
+            </>
+          ) : (
+            <>
+              <Stat label="Active users"              value={stats.active_users}     icon={<UsersIcon />} />
+              <Stat label="Pending register requests" value={stats.pending_requests} icon={<InboxIcon />} />
+              <Stat label="Devices"                   value={stats.device_count}     icon={<DeviceIcon />} />
+            </>
+          )}
         </div>
 
-        <div className="row-between" style={{ marginBottom: '0.5rem' }}>
+        <div className="row-between anim-in anim-d3" style={{ marginBottom: '0.5rem' }}>
           <h2 style={{ fontSize: '1.05rem', margin: 0 }}>Recent register requests</h2>
           <Link className="inline-link" to="/admin/register-requests">View all →</Link>
         </div>
 
-        <div className="card" style={{ padding: 0 }}>
+        <div className="card anim-in anim-d4" style={{ padding: 0 }}>
           <table className="data-table">
             <thead>
               <tr><th>Submitted</th><th>Name</th><th>Email</th><th>Mobile</th><th>Action</th></tr>
             </thead>
             <tbody>
-              {recent.length === 0 ? (
+              {recent === null ? (
+                <>
+                  <SkeletonRow cols={5} />
+                  <SkeletonRow cols={5} />
+                  <SkeletonRow cols={5} />
+                </>
+              ) : recent.length === 0 ? (
                 <tr><td colSpan={5} className="muted" style={{ padding: '1.5rem', textAlign: 'center' }}>
                   No pending requests.
                 </td></tr>

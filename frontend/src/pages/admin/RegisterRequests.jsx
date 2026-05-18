@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import AdminNav from '../../components/AdminNav.jsx';
+import { SkeletonRow } from '../../components/Skeleton.jsx';
 import { api } from '../../api';
 
 const STATUS_TABS = [
@@ -43,7 +44,7 @@ export default function RegisterRequests() {
     <>
       <AdminNav />
       <main className="container">
-        <div className="row-between" style={{ marginBottom: '1rem' }}>
+        <div className="row-between anim-in-down" style={{ marginBottom: '1rem' }}>
           <div>
             <h1 className="page-title">Register requests</h1>
             <p className="page-sub" style={{ marginBottom: 0 }}>
@@ -66,7 +67,7 @@ export default function RegisterRequests() {
 
         {error && <div className="notice error">{error}</div>}
 
-        <div className="card" style={{ padding: 0 }}>
+        <div className="card anim-in anim-d1" style={{ padding: 0 }}>
           <table className="data-table">
             <thead>
               <tr>
@@ -81,13 +82,17 @@ export default function RegisterRequests() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="muted" style={{ padding: '1.5rem' }}>Loading…</td></tr>
+                <>
+                  <SkeletonRow cols={7} />
+                  <SkeletonRow cols={7} />
+                  <SkeletonRow cols={7} />
+                </>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={7} className="muted" style={{ padding: '2rem', textAlign: 'center' }}>
                   No {status === 'all' ? '' : status} requests.
                 </td></tr>
-              ) : rows.map((r) => (
-                <tr key={r.id}>
+              ) : rows.map((r, i) => (
+                <tr key={r.id} className="anim-in" style={{ animationDelay: `${Math.min(i * 25, 280)}ms` }}>
                   <td>{new Date(r.created_at).toLocaleString()}</td>
                   <td style={{ fontWeight: 500 }}>{r.full_name || '—'}</td>
                   <td>{r.email}</td>
