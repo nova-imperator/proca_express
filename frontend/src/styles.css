@@ -587,11 +587,11 @@ dialog menu { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0;
 }
 .captcha-image {
   display: block;
-  width: 150px; height: 50px;
+  width: 200px; height: 64px;
   border-radius: 6px;
-  background: #0f172a;
+  background: #ffffff;
+  border: 1px solid var(--border);
   user-select: none;
-  /* The SVG already has the bg; rounded clip just nicens the edges. */
 }
 .captcha-placeholder {
   display: grid; place-items: center;
