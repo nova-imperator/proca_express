@@ -12,6 +12,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const adminRoutes = require('./routes/admin');
 const configRoutes = require('./routes/config');
+const integrationRoutes = require('./routes/integrations');
 const { attachUser } = require('./middleware/auth');
 
 // Fail loud at startup if a critical secret is missing or obviously a placeholder.
@@ -65,8 +66,11 @@ app.use(
 // Belt-and-suspenders CSRF defense: any state-changing request that carries
 // an Origin or Referer must match the allowlist. SameSite=Lax already blocks
 // most cross-site forms; this stops the rest.
+// Skipped for /api/integrations/* because those are server-to-server callbacks
+// from partner platforms (MindLabs) and never carry a browser Origin we control.
 app.use((req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  if (req.path.startsWith('/api/integrations/')) return next();
   const origin = req.headers.origin || req.headers.referer;
   if (!origin) return next(); // server-to-server, no browser to forge from
   const ok = allowedOrigins.some((o) => origin.startsWith(o));
@@ -106,6 +110,7 @@ app.use('/api', publicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/integrations', integrationRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'not_found', path: req.originalUrl });

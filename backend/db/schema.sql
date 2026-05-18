@@ -48,18 +48,93 @@ CREATE TABLE IF NOT EXISTS password_resets (
 CREATE INDEX IF NOT EXISTS password_resets_user_idx ON password_resets(user_id);
 CREATE INDEX IF NOT EXISTS password_resets_token_idx ON password_resets(token_hash);
 
--- Devices: stubbed for future phase
+-- ============================================================
+-- MindLabs integration tables
+-- ============================================================
+-- We mirror the MindLabs device catalog and store the packet stream that
+-- MindLabs pushes to our webhook. Authoritative source for `devices` is
+-- MindLabs (their API), but caching id + assignment locally lets us:
+--   • assign a device to a user (column user_id below)
+--   • render the user's dashboard without a roundtrip
+--   • run analytics on `device_packets` without paying MindLabs API quota
+
+-- One-shot migration from the older stub. Only runs if the existing
+-- `devices.id` is bigint (the stub shape) — production runs after the first
+-- pass become no-ops.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'devices' AND column_name = 'id' AND data_type = 'bigint'
+  ) THEN
+    DROP TABLE devices CASCADE;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS devices (
-  id              BIGSERIAL PRIMARY KEY,
-  user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  device_name     TEXT,
-  imei            TEXT,
-  status          TEXT NOT NULL DEFAULT 'inactive',
-  last_seen_at    TIMESTAMPTZ,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                  TEXT PRIMARY KEY,                    -- MindLabs device id, e.g. "AA3630"
+  user_id             BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  type                TEXT,                                 -- ZN_GO, ZN_ANCHOR, ...
+  asset_name          TEXT,                                 -- last seen from packet payload
+  personal_reference  TEXT,
+  org_id              TEXT,                                 -- MindLabs orgId
+  state               TEXT,                                 -- idle | attached | deprecated
+  last_seen_at        TIMESTAMPTZ,
+  last_battery        INT,
+  last_temp_i         NUMERIC,
+  last_humid_i        NUMERIC,
+  last_lat            NUMERIC,
+  last_lng            NUMERIC,
+  last_address        TEXT,
+  raw_meta            JSONB,                                -- last device snapshot from API
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS devices_user_idx ON devices(user_id);
+
+DROP TRIGGER IF EXISTS devices_set_updated_at ON devices;
+CREATE TRIGGER devices_set_updated_at
+  BEFORE UPDATE ON devices
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Time-series sensor packets, append-only. Ingested by the MindLabs webhook.
+CREATE TABLE IF NOT EXISTS device_packets (
+  id                  BIGSERIAL PRIMARY KEY,
+  device_id           TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  packet_time         TIMESTAMPTZ NOT NULL,                 -- from packet.timestamp (unix)
+  battery             INT,
+  time_interval       INT,
+  temp_i              NUMERIC,
+  temp_p1             NUMERIC,
+  humid_i             NUMERIC,
+  lat                 NUMERIC,
+  lng                 NUMERIC,
+  formatted_address   TEXT,
+  raw                 JSONB NOT NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (device_id, packet_time)                            -- replay-safe
+);
+
+CREATE INDEX IF NOT EXISTS device_packets_device_time_idx
+  ON device_packets(device_id, packet_time DESC);
+
+-- Raw audit log of every webhook envelope we receive. Useful for debugging
+-- and replaying if our packet parser ever has a bug.
+CREATE TABLE IF NOT EXISTS webhook_events (
+  id                  BIGSERIAL PRIMARY KEY,
+  source              TEXT NOT NULL,                        -- "mindlabs"
+  payload_timestamp   BIGINT,                                -- envelope.timestamp
+  signature           TEXT,                                  -- envelope.signature
+  packet_count        INT,
+  raw                 JSONB NOT NULL,
+  received_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS webhook_events_received_idx ON webhook_events(received_at DESC);
+-- De-dupe replays: a {source, timestamp, signature} triple should be unique
+-- if MindLabs uses deterministic signatures. Unique-or-not, the index helps lookup.
+CREATE INDEX IF NOT EXISTS webhook_events_sig_idx ON webhook_events(source, signature);
 
 -- updated_at trigger for users
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
