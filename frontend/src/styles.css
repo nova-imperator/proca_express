@@ -389,6 +389,20 @@ select[disabled] { background-color: var(--surface-2); color: var(--muted); curs
   font-size: 0.82rem;
   line-height: 1.45;
 }
+.iframe-toolbar {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.iframe-toolbar-left { display: flex; align-items: center; gap: 0.6rem; }
+.iframe-fallback code {
+  background: var(--surface-2);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
 
 /* ============================================================
  * Admin Devices table — richer cells
