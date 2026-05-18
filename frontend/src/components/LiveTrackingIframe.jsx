@@ -51,9 +51,11 @@ export default function LiveTrackingIframe({ deviceId, isAdmin }) {
         if (cancelled) return;
         const reason =
           err.data?.error === 'iframe_token_denied'
-            ? 'Your MindLabs API key doesn\'t have iframe permission. Open ' +
-              'app.mindlabs.cloud → Settings → Integrations → API Keys, edit ' +
-              'the PROCA EXPRESS key, and enable the iframe / embed scope.'
+            ? 'MindLabs’ iframe-token endpoint expects a logged-in user ' +
+              'session (Cognito IdToken), not an API key — the integration ' +
+              'doc that says `apikey: API_KEY` is inaccurate. Ask MindLabs ' +
+              'support for the correct server-to-server iframe flow, or use ' +
+              'the cached sensor data and packet history below.'
             : err.data?.message || 'Could not load live tracking.';
         setError(reason);
       })
