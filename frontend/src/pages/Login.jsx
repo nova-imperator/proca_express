@@ -137,9 +137,9 @@ export default function Login() {
           <div className="login-hero-body">
             <h2>Every device, every mile, on one screen.</h2>
             <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Track your
-              entire fleet in real time, with live status, location history, and
-              instant alerts the moment anything goes wrong.
+              Track your entire fleet in real time. Watch live temperature,
+              humidity, battery and location for every tracker, with instant
+              alerts the moment a reading drifts outside your thresholds.
             </p>
             <ul className="login-hero-bullets">
               <li><CheckIcon /> Live status across your full inventory</li>
