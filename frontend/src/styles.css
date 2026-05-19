@@ -107,6 +107,96 @@ body {
 .site-header nav a:hover { background: rgba(15,23,42,0.04); }
 .site-header.admin nav a:hover { background: rgba(255,255,255,0.06); }
 .site-header.admin nav a.active { background: rgba(255,255,255,0.1); color: #fff; }
+
+/* Logout is destructive; mark it visually wherever it appears. */
+.link-button.danger, .nav-logout { color: var(--danger) !important; }
+.site-header.admin .nav-logout { color: #fca5a5 !important; }
+.site-header.admin .nav-logout:hover { color: #fecaca !important; background: rgba(220, 38, 38, 0.15); }
+
+/* Mobile hamburger / drawer */
+.nav-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: inherit;
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  place-items: center;
+}
+.nav-toggle:hover { background: rgba(15, 23, 42, 0.05); }
+.site-header.admin .nav-toggle:hover { background: rgba(255,255,255,0.08); }
+.nav-close {
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: none;
+  place-items: center;
+  color: inherit;
+  position: absolute;
+  top: 0.6rem; right: 0.75rem;
+}
+.nav-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(2px);
+  z-index: 998;
+  animation: fadeIn .18s ease both;
+}
+
+@keyframes drawerIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@media (max-width: 720px) {
+  .nav-toggle { display: grid; }
+
+  /* Hide the inline nav by default; show only when the drawer is open. */
+  .site-header nav {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(280px, 82vw);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.25rem;
+    padding: 3.6rem 0.9rem 1rem;
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+    z-index: 999;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform .25s cubic-bezier(.2,.7,.2,1);
+  }
+  .site-header.admin nav { background: #0f172a; }
+
+  .site-header nav.is-open { transform: translateX(0); animation: drawerIn .25s cubic-bezier(.2,.7,.2,1); }
+  .site-header nav.is-open ~ .nav-backdrop,
+  .nav-backdrop.is-open { display: block; }
+
+  .site-header nav .nav-close { display: grid; }
+
+  /* Make each item a full-width tap target. */
+  .site-header nav a,
+  .site-header nav button.link-button {
+    width: 100%;
+    padding: 0.85rem 0.95rem !important;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    text-align: left;
+    justify-content: flex-start;
+  }
+  .site-header nav .nav-divider {
+    height: 1px; background: var(--border); margin: 0.4rem 0;
+  }
+  .site-header.admin nav .nav-divider { background: rgba(255,255,255,0.1); }
+
+  body.nav-locked { overflow: hidden; }
+}
 .site-footer { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: 0.85rem; }
 
 /* ========== Typography ========== */
