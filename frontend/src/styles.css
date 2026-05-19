@@ -1050,10 +1050,9 @@ dialog menu { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0;
   /* Tighter container padding so we don't waste pixels on the edges. */
   .container { padding: 1.25rem 0.85rem; }
 
-  /* Header */
+  /* Header — drawer handles the nav layout (see drawer section above);
+   * just tighten brand padding here. */
   .site-header { padding: 0.6rem 0.85rem; }
-  .site-header nav { gap: 0.35rem; font-size: 0.85rem; flex-wrap: wrap; justify-content: flex-end; }
-  .site-header nav a { padding: 0.3rem 0.5rem; }
   .brand .brand-name, .brand span { font-size: 0.95rem; }
 
   /* Row groupings reflow to a single column. */
