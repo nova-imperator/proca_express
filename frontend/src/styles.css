@@ -371,6 +371,101 @@ select[disabled] { background-color: var(--surface-2); color: var(--muted); curs
 }
 
 /* ============================================================
+ * LineChart (custom SVG, no library)
+ * ============================================================ */
+.chart-wrap { position: relative; width: 100%; }
+.chart-svg {
+  display: block;
+  width: 100%;
+  height: 220px;
+  font-family: var(--font);
+}
+.chart-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  padding: 0.45rem 0.65rem;
+  font-size: 0.78rem;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1;
+}
+.chart-tooltip-time { color: var(--muted); }
+.chart-tooltip-value { font-weight: 600; font-size: 0.92rem; margin-top: 1px; }
+
+/* Tabs for picking the chart metric */
+.chart-tabs {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  background: var(--surface-2);
+  gap: 2px;
+}
+.chart-tabs button {
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.85rem;
+  font: inherit; font-size: 0.82rem;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: background .15s, color .15s;
+}
+.chart-tabs button.active {
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+ * Pagination
+ * ============================================================ */
+.pagination {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.page-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--fg-soft);
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-width: 32px;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.page-btn:hover:not([disabled]) {
+  background: var(--surface-2);
+  border-color: var(--muted-2);
+  color: var(--fg);
+}
+.page-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.page-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.page-ellipsis { color: var(--muted); padding: 0 0.4rem; }
+
+/* ============================================================
  * Live-tracking iframe (MindLabs embed)
  * ============================================================ */
 .iframe-shell {

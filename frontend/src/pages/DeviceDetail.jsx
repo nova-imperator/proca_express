@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import UserNav from '../components/UserNav.jsx';
 import AdminNav from '../components/AdminNav.jsx';
 import { SkeletonLine, SkeletonRow } from '../components/Skeleton.jsx';
 import LiveTrackingIframe from '../components/LiveTrackingIframe.jsx';
+import LineChart from '../components/LineChart.jsx';
+import Pagination from '../components/Pagination.jsx';
 import { api } from '../api';
 
 // Dual-mode device detail page.
@@ -123,38 +125,124 @@ export default function DeviceDetail() {
           </>
         )}
 
-        {/* Recent packets */}
-        <h2 style={{ fontSize: '1.05rem', margin: '1rem 0 0.5rem' }}>Recent packets</h2>
-        <div className="card anim-in anim-d4" style={{ padding: 0 }}>
-          <table className="data-table">
-            <thead>
-              <tr><th>Time</th><th>Temp</th><th>Humid</th><th>Battery</th><th>Location</th></tr>
-            </thead>
-            <tbody>
-              {packets.length === 0 ? (
-                <tr><td colSpan={5} className="muted" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                  No packets recorded yet. Once MindLabs delivers a transmission for this device, it'll show up here.
-                </td></tr>
-              ) : packets.map((p, i) => (
-                <tr key={i}>
-                  <td>{new Date(p.packet_time).toLocaleString()}</td>
-                  <td>{p.temp_i != null ? `${p.temp_i}°C` : '—'}</td>
-                  <td>{p.humid_i != null ? `${p.humid_i}%` : '—'}</td>
-                  <td>{p.battery != null ? `${p.battery}%` : '—'}</td>
-                  <td>
-                    {p.lat != null && p.lng != null ? (
-                      <a className="inline-link" target="_blank" rel="noreferrer"
-                         href={`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`}>
-                        {p.formatted_address ? truncate(p.formatted_address, 40) : `${p.lat}, ${p.lng}`} ↗
-                      </a>
-                    ) : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* Sensor trend chart */}
+        <SensorTrend packets={packets} />
+
+        {/* Packet table — paginated + filterable */}
+        <PacketTable packets={packets} />
       </main>
+    </>
+  );
+}
+
+// ---------- Sensor trend (chart + metric tabs) ----------
+
+const METRICS = [
+  { key: 'temp_i',   label: 'Temperature', unit: '°C', color: '#2563eb' },
+  { key: 'humid_i',  label: 'Humidity',    unit: '%',  color: '#16a34a' },
+  { key: 'battery',  label: 'Battery',     unit: '%',  color: '#b45309' },
+];
+
+function SensorTrend({ packets }) {
+  const [metric, setMetric] = useState('temp_i');
+  const def = METRICS.find((m) => m.key === metric) || METRICS[0];
+  const data = useMemo(
+    () => (packets || [])
+      .map((p) => ({ t: p.packet_time, v: p[metric] }))
+      .filter((p) => p.v != null),
+    [packets, metric]
+  );
+
+  return (
+    <>
+      <div className="row-between anim-in anim-d3" style={{ margin: '1rem 0 0.5rem' }}>
+        <h2 style={{ fontSize: '1.05rem', margin: 0 }}>Sensor trend</h2>
+        <div className="chart-tabs" role="tablist" aria-label="Metric">
+          {METRICS.map((m) => (
+            <button
+              key={m.key}
+              role="tab"
+              aria-selected={metric === m.key}
+              className={metric === m.key ? 'active' : ''}
+              onClick={() => setMetric(m.key)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="card anim-in anim-d4">
+        <LineChart data={data} color={def.color} unit={def.unit} gradient />
+      </div>
+    </>
+  );
+}
+
+// ---------- Packet table (paginated + location-only toggle) ----------
+
+const PAGE_SIZE = 15;
+
+function PacketTable({ packets }) {
+  const [locOnly, setLocOnly] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const list = useMemo(
+    () => (locOnly ? packets.filter((p) => p.lat != null && p.lng != null) : packets),
+    [packets, locOnly]
+  );
+
+  // Reset to page 1 whenever the filter changes the visible set.
+  useEffect(() => { setPage(1); }, [locOnly]);
+
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const sliceStart = (safePage - 1) * PAGE_SIZE;
+  const rows = list.slice(sliceStart, sliceStart + PAGE_SIZE);
+
+  return (
+    <>
+      <div className="row-between anim-in anim-d5" style={{ margin: '1rem 0 0.5rem' }}>
+        <h2 style={{ fontSize: '1.05rem', margin: 0 }}>
+          Packet log <span className="muted" style={{ fontWeight: 400 }}>· {list.length} total</span>
+        </h2>
+        <label className="checkbox" style={{ fontSize: '0.85rem', color: 'var(--fg-soft)' }}>
+          <input type="checkbox" checked={locOnly} onChange={(e) => setLocOnly(e.target.checked)} />
+          Only show location updates
+        </label>
+      </div>
+
+      <div className="card anim-in anim-d6" style={{ padding: 0 }}>
+        <table className="data-table">
+          <thead>
+            <tr><th>Time</th><th>Temp</th><th>Humid</th><th>Battery</th><th>Location</th></tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={5} className="muted" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                {locOnly
+                  ? 'No packets in this view contain a location reading.'
+                  : 'No packets recorded yet. Once MindLabs delivers a transmission for this device, it\'ll show up here.'}
+              </td></tr>
+            ) : rows.map((p, i) => (
+              <tr key={`${p.packet_time}-${i}`}>
+                <td>{new Date(p.packet_time).toLocaleString()}</td>
+                <td>{p.temp_i != null ? `${p.temp_i}°C` : '—'}</td>
+                <td>{p.humid_i != null ? `${p.humid_i}%` : '—'}</td>
+                <td>{p.battery != null ? `${p.battery}%` : '—'}</td>
+                <td>
+                  {p.lat != null && p.lng != null ? (
+                    <a className="inline-link" target="_blank" rel="noreferrer"
+                       href={`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`}>
+                      {p.formatted_address ? truncate(p.formatted_address, 40) : `${p.lat}, ${p.lng}`} ↗
+                    </a>
+                  ) : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+      </div>
     </>
   );
 }
