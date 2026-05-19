@@ -70,7 +70,7 @@ export default function Login() {
         <div className="auth-card">
           <div className="brand-mark anim-in-down">
             <BrandMark />
-            <span className="brand-name">Proca Express</span>
+            <span className="brand-name">Cargoverse</span>
           </div>
           <h1 className="anim-in anim-d1">Welcome back</h1>
           <p className="auth-sub anim-in anim-d2">Sign in with your email or mobile number.</p>
@@ -131,7 +131,7 @@ export default function Login() {
         <div className="login-hero-content">
           <div className="brand-mark">
             <BrandMark />
-            <span className="brand-name">Proca Express</span>
+            <span className="brand-name">Cargoverse</span>
           </div>
 
           <div className="login-hero-body">
@@ -150,7 +150,7 @@ export default function Login() {
           </div>
 
           <div className="login-hero-foot">
-            © {new Date().getFullYear()} Proca Express · tracking.procaexpress.in
+            © {new Date().getFullYear()} Cargoverse · tracking.cargover.se
           </div>
         </div>
       </aside>

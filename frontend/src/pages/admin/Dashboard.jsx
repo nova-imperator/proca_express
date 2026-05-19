@@ -70,7 +70,7 @@ export default function AdminDashboard() {
                 but nothing arrives within an hour, MindLabs likely needs an HTTPS endpoint —
                 ask the engineering team to set up TLS for{' '}
                 <code style={{ background: 'var(--surface-2)', padding: '0.1rem 0.4rem', borderRadius: 4 }}>
-                  tracking.procaexpress.in
+                  tracking.cargover.se
                 </code>.
               </p>
             </div>

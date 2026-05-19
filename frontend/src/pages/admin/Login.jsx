@@ -47,7 +47,7 @@ export default function AdminLogin() {
       <div className="auth-card">
         <div className="brand-mark">
           <BrandMark />
-          <span className="brand-name">Proca Express · Admin</span>
+          <span className="brand-name">Cargoverse · Admin</span>
         </div>
         <h1>Admin sign in</h1>
         <p className="auth-sub">Authorised personnel only.</p>

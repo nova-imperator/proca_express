@@ -12,7 +12,7 @@ export default function AdminNav() {
     <header className="site-header admin">
       <Link to="/admin/home" className="brand">
         <BrandMark size={22} />
-        <span>Proca Express · Admin</span>
+        <span>Cargoverse · Admin</span>
       </Link>
       <nav>
         {admin && (

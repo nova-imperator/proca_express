@@ -16,7 +16,7 @@ export default function ResetPassword() {
     return (
       <div className="auth-shell">
         <div className="auth-card">
-          <div className="brand-mark"><BrandMark /><span className="brand-name">Proca Express</span></div>
+          <div className="brand-mark"><BrandMark /><span className="brand-name">Cargoverse</span></div>
           <h1>Invalid link</h1>
           <p className="muted">Reset token missing or malformed.</p>
         </div>
@@ -45,7 +45,7 @@ export default function ResetPassword() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="brand-mark"><BrandMark /><span className="brand-name">Proca Express</span></div>
+        <div className="brand-mark"><BrandMark /><span className="brand-name">Cargoverse</span></div>
         <h1>Reset password</h1>
         <p className="auth-sub">Pick a new password (8+ characters).</p>
         {error && <div className="notice error">{error}</div>}

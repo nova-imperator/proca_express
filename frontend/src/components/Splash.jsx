@@ -20,7 +20,7 @@ export default function Splash({ done }) {
         <div className="splash-mark">
           <BrandMark size={40} />
         </div>
-        <div className="splash-name">Proca Express</div>
+        <div className="splash-name">Cargoverse</div>
         <div className="splash-bar" role="progressbar" aria-label="Loading" />
       </div>
     </div>

@@ -8,7 +8,7 @@ export default function UserNav() {
     <header className="site-header">
       <Link to={user ? '/home' : '/'} className="brand">
         <BrandMark size={22} />
-        <span>Proca Express</span>
+        <span>Cargoverse</span>
       </Link>
       <nav>
         {user ? (
