@@ -6,6 +6,7 @@ import { SkeletonLine, SkeletonRow } from '../components/Skeleton.jsx';
 import LiveTrackingIframe from '../components/LiveTrackingIframe.jsx';
 import LineChart from '../components/LineChart.jsx';
 import Pagination from '../components/Pagination.jsx';
+import useLocalState from '../hooks/useLocalState.js';
 import { api } from '../api';
 
 // Dual-mode device detail page.
@@ -183,7 +184,9 @@ function SensorTrend({ packets }) {
 const PAGE_SIZE = 15;
 
 function PacketTable({ packets }) {
-  const [locOnly, setLocOnly] = useState(false);
+  // UI preference; remembered per-device in localStorage. Default true because
+  // a journey timeline (location-only) is more useful than a flat sensor wall.
+  const [locOnly, setLocOnly] = useLocalState('devicedetail.locOnly', true);
   const [page, setPage] = useState(1);
 
   const list = useMemo(
