@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { api } from '../api';
 import BrandMark from '../components/BrandMark.jsx';
 import Captcha from '../components/Captcha.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 
 // A small pool of logistics/tracking-themed photos from Lorem Picsum. The
 // seed makes each one stable so caching kicks in, and we pick one per session
@@ -92,8 +93,7 @@ export default function Login() {
             </label>
             <label>
               Password
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"

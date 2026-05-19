@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminNav from '../../components/AdminNav.jsx';
+import PasswordInput from '../../components/PasswordInput.jsx';
 import { api } from '../../api';
 
 const blank = {
@@ -54,10 +55,10 @@ export default function AddUser() {
             <input type="tel" value={form.mobile} onChange={onChange('mobile')} placeholder="+91 90000 00000" required />
           </label>
           <label>Password <span className="req">*</span>
-            <input type="password" value={form.password} onChange={onChange('password')} required minLength={8} />
+            <PasswordInput value={form.password} onChange={onChange('password')} required minLength={8} />
           </label>
           <label>Confirm password <span className="req">*</span>
-            <input type="password" value={form.confirm} onChange={onChange('confirm')} required minLength={8} />
+            <PasswordInput value={form.confirm} onChange={onChange('confirm')} required minLength={8} />
           </label>
           <div className="divider" />
           <label>Full name

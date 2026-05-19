@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import BrandMark from '../components/BrandMark.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -51,11 +52,11 @@ export default function ResetPassword() {
         {error && <div className="notice error">{error}</div>}
         <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
           <label>New password
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password" required minLength={8} />
           </label>
           <label>Confirm password
-            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
+            <PasswordInput value={confirm} onChange={(e) => setConfirm(e.target.value)}
               autoComplete="new-password" required minLength={8} />
           </label>
           <button className="btn primary full" type="submit" disabled={pending}>

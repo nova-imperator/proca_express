@@ -183,6 +183,32 @@ select[disabled] { background-color: var(--surface-2); color: var(--muted); curs
   flex: 1 1 200px;
 }
 
+/* Password field with built-in show/hide eye toggle. */
+.password-input { position: relative; width: 100%; }
+.password-input input { width: 100%; padding-right: 2.6rem; }
+.password-toggle {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.password-toggle:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--fg);
+}
+.password-toggle:active { transform: translateY(-50%) scale(0.94); }
+
 /* ========== Buttons ========== */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;

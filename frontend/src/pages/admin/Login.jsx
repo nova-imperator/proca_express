@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import BrandMark from '../../components/BrandMark.jsx';
 import Captcha from '../../components/Captcha.jsx';
+import PasswordInput from '../../components/PasswordInput.jsx';
 
 export default function AdminLogin() {
   const { admin, loginAdmin } = useAuth();
@@ -60,7 +61,7 @@ export default function AdminLogin() {
               autoComplete="username" placeholder="admin@…" required />
           </label>
           <label>Password
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password" placeholder="••••••••" required />
           </label>
 

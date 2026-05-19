@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import AdminNav from '../../components/AdminNav.jsx';
 import { SkeletonRow } from '../../components/Skeleton.jsx';
+import PasswordInput from '../../components/PasswordInput.jsx';
 import { api } from '../../api';
 
 const STATUS_TABS = [
@@ -164,10 +165,10 @@ function ApproveDialog({ request, onClose, onDone }) {
           A new user account will be created for <strong>{request.email}</strong>. Share the password with them via a secure channel.
         </p>
         <label>New user password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoFocus />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoFocus />
         </label>
         <label>Confirm password
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
+          <PasswordInput value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
         </label>
         {error && <div className="notice error">{error}</div>}
         <menu>
