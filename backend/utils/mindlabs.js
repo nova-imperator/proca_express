@@ -117,7 +117,15 @@ async function buildIframePayload(deviceId) {
   try {
     const result = await generateIframeToken();
     if (result?.success === false) throw new Error(result.message || 'denied');
-    const token = result?.token || result?.data?.token || result?.data?.iframeToken || result?.iframeToken;
+    // MindLabs returns { success: true, data: { idToken: "<JWT>" } }. Earlier
+     // doc snippets used a different field name, so we try a few shapes.
+    const token =
+      result?.data?.idToken ||
+      result?.data?.iframeToken ||
+      result?.data?.token ||
+      result?.iframeToken ||
+      result?.idToken ||
+      result?.token;
     if (!token) throw new Error('no token in response');
     return { token, org_id: orgId, device_id: deviceId, mode: 'mindlabs' };
   } catch (_e) {
