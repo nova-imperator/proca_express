@@ -73,7 +73,6 @@ export default function LiveTrackingIframe({ deviceId, isAdmin }) {
   }, [fetchToken]);
 
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-  const isLocalhost = /^https?:\/\/localhost/.test(currentOrigin);
 
   if (loading) {
     return (
@@ -108,12 +107,10 @@ export default function LiveTrackingIframe({ deviceId, isAdmin }) {
 
       {error ? (
         <FallbackCard error={error} currentOrigin={currentOrigin} />
-      ) : !isLocalhost ? (
-        // In production, MindLabs' CSP blocks embedding from our origin.
-        // Show a clear explanation + the working "Open in new tab" path.
-        <EmbedBlockedCard currentOrigin={currentOrigin} mindlabsHref={src} />
       ) : (
-        // Localhost — MindLabs allows :3000/:3010/:5173 so the iframe loads.
+        // CSP is enforced by MindLabs; if our origin isn't on their allowlist
+        // the browser shows "refused to connect" inside the frame. Whitelisted
+        // origins (incl. tracking.cargover.se as of 2026-05-19) render fine.
         <iframe
           ref={iframeRef}
           src={src}
@@ -123,33 +120,6 @@ export default function LiveTrackingIframe({ deviceId, isAdmin }) {
           className="iframe-track"
         />
       )}
-    </div>
-  );
-}
-
-function EmbedBlockedCard({ currentOrigin, mindlabsHref }) {
-  return (
-    <div className="iframe-fallback">
-      <div className="iframe-fallback-icon"><LockIcon /></div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600, color: 'var(--fg-soft)', marginBottom: 4 }}>
-          MindLabs blocks embedding from this domain
-        </div>
-        <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-          Their server sets a <code>Content-Security-Policy: frame-ancestors</code>
-          header that only allows a specific list of origins to embed{' '}
-          <code>app.mindlabs.cloud</code>. Currently allowed: their own subdomains,
-          <code> http://localhost:3000</code>,<code> :3010</code>,<code> :5173</code>,
-          plus a couple of customer domains.
-        </p>
-        <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem' }}>
-          To embed here, ask MindLabs support to add{' '}
-          <strong style={{ fontFamily: 'ui-monospace, monospace' }}>{currentOrigin}</strong>
-          {' '}to their <code>frame-ancestors</code> allowlist. Until then, the
-          "Open in MindLabs ↗" button above works fine — it opens the same view
-          in a new tab where you're already signed in.
-        </p>
-      </div>
     </div>
   );
 }
