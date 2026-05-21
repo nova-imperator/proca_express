@@ -9,21 +9,32 @@ const ADMIN_COOKIE = 'pe_admin';
 // Set COOKIE_SECURE=true in .env once TLS is in front (Certbot/nginx on 443).
 const cookieSecure = String(process.env.COOKIE_SECURE || '').toLowerCase() === 'true';
 
+// Parse durations like "12h", "30m", "7d", "60s" into milliseconds. Used so
+// the cookie's `maxAge` always matches the JWT's `expiresIn` — otherwise the
+// cookie outlives a dead token and the browser keeps re-sending garbage.
+function parseDurationMs(s) {
+  const m = String(s || '').trim().match(/^(\d+)\s*([smhd])$/i);
+  if (!m) return 12 * 60 * 60 * 1000; // default: 12h
+  const mult = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }[m[2].toLowerCase()];
+  return Number(m[1]) * mult;
+}
+
+const SESSION_TTL = process.env.JWT_EXPIRES_IN || '12h';
+const SESSION_TTL_MS = parseDurationMs(SESSION_TTL);
+
 function cookieOptions() {
   return {
     httpOnly: true,
     sameSite: 'lax',
     secure: cookieSecure,
     signed: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: SESSION_TTL_MS,
     path: '/',
   };
 }
 
 function signToken(payload) {
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: SESSION_TTL });
 }
 
 function setUserCookie(res, user) {
