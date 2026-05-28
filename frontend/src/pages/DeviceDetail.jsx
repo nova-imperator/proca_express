@@ -7,6 +7,9 @@ import LiveTrackingIframe from '../components/LiveTrackingIframe.jsx';
 import LineChart from '../components/LineChart.jsx';
 import Pagination from '../components/Pagination.jsx';
 import useLocalState from '../hooks/useLocalState.js';
+import {
+  ThermometerIcon, DropletIcon, SunIcon, ShockIcon, BatteryIcon, ClockIcon,
+} from '../components/SensorIcons.jsx';
 import { api } from '../api';
 
 // Dual-mode device detail page.
@@ -86,30 +89,44 @@ export default function DeviceDetail() {
 
         {/* Current snapshot */}
         <h2 style={{ fontSize: '1.05rem', margin: '0.5rem 0' }}>Current snapshot</h2>
-        <div className="stat-grid stagger">
-          <SnapStat label="Last temperature" value={device.last_temp_i  != null ? `${device.last_temp_i}°C` : '—'} />
-          <SnapStat label="Last humidity"    value={device.last_humid_i != null ? `${device.last_humid_i}%` : '—'} />
-          <SnapStat label="Light"            value={device.last_light   != null ? `${device.last_light} lx` : '—'} />
-          <SnapStat label="Shock"            value={device.last_shock   != null ? `${device.last_shock}` : '—'} />
-          <SnapStat label="Battery"          value={device.last_battery != null ? `${device.last_battery}%` : '—'} />
-          <SnapStat label="Last reported"    value={device.last_seen_at ? new Date(device.last_seen_at).toLocaleString() : 'never'} />
+        <div className="snap-grid stagger">
+          <SnapStat label="Temperature" color="#2563eb" icon={<ThermometerIcon />}
+                    value={device.last_temp_i  != null ? `${device.last_temp_i}°C` : '—'} />
+          <SnapStat label="Humidity" color="#16a34a" icon={<DropletIcon />}
+                    value={device.last_humid_i != null ? `${device.last_humid_i}%` : '—'} />
+          <SnapStat label="Light" color="#ca8a04" icon={<SunIcon />}
+                    value={device.last_light   != null ? `${device.last_light} lx` : '—'} />
+          <SnapStat label="Shock" color="#dc2626" icon={<ShockIcon />}
+                    value={device.last_shock   != null ? `${device.last_shock}` : '—'} />
+          <SnapStat label="Battery" color={batteryColor(device.last_battery)} icon={<BatteryIcon />}
+                    value={device.last_battery != null ? `${device.last_battery}%` : '—'}
+                    sub={device.last_battery != null && (
+                      <div className="battery-bar">
+                        <div style={{ width: `${device.last_battery}%`, background: batteryColor(device.last_battery) }} />
+                      </div>
+                    )} />
+          <SnapStat label="Last reported" color="#64748b" icon={<ClockIcon />}
+                    value={device.last_seen_at ? relTime(device.last_seen_at) : 'never'}
+                    sub={device.last_seen_at && (
+                      <div className="snap-sub">{new Date(device.last_seen_at).toLocaleString()}</div>
+                    )} />
         </div>
 
         {/* 24h summary */}
         <h2 style={{ fontSize: '1.05rem', margin: '0.5rem 0' }}>Last 24 hours</h2>
         <div className="card anim-in anim-d2">
           <div className="agg-grid">
-            <Agg label="Packets"     value={summary_24h?.packet_count ?? '—'} />
-            <Agg label="Avg temp"    value={summary_24h?.avg_temp_i != null ? `${summary_24h.avg_temp_i}°C` : '—'} />
-            <Agg label="Min / max"   value={
+            <Agg label="Packets"      dot="#94a3b8" value={summary_24h?.packet_count ?? '—'} />
+            <Agg label="Avg temp"     dot="#2563eb" value={summary_24h?.avg_temp_i != null ? `${summary_24h.avg_temp_i}°C` : '—'} />
+            <Agg label="Min / max"    dot="#2563eb" value={
               summary_24h?.min_temp_i != null
                 ? `${summary_24h.min_temp_i} / ${summary_24h.max_temp_i}°C`
                 : '—'
             } />
-            <Agg label="Avg humidity" value={summary_24h?.avg_humid_i != null ? `${summary_24h.avg_humid_i}%` : '—'} />
-            <Agg label="Peak light"   value={summary_24h?.max_light != null ? `${summary_24h.max_light} lx` : '—'} />
-            <Agg label="Peak shock"   value={summary_24h?.max_shock != null ? `${summary_24h.max_shock}` : '—'} />
-            <Agg label="Min battery"  value={summary_24h?.min_battery != null ? `${summary_24h.min_battery}%` : '—'} />
+            <Agg label="Avg humidity" dot="#16a34a" value={summary_24h?.avg_humid_i != null ? `${summary_24h.avg_humid_i}%` : '—'} />
+            <Agg label="Peak light"   dot="#ca8a04" value={summary_24h?.max_light != null ? `${summary_24h.max_light} lx` : '—'} />
+            <Agg label="Peak shock"   dot="#dc2626" value={summary_24h?.max_shock != null ? `${summary_24h.max_shock}` : '—'} />
+            <Agg label="Min battery"  dot="#b45309" value={summary_24h?.min_battery != null ? `${summary_24h.min_battery}%` : '—'} />
           </div>
         </div>
 
@@ -258,22 +275,47 @@ function PacketTable({ packets }) {
   );
 }
 
-function SnapStat({ label, value }) {
+function SnapStat({ label, value, icon, color = '#64748b', sub }) {
   return (
-    <div className="card stat">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value" style={{ fontSize: '1.45rem', wordBreak: 'break-word' }}>{value}</div>
+    <div className="snap-card">
+      <div className="snap-icon" style={{ background: `${color}1a`, color }}>{icon}</div>
+      <div className="snap-body">
+        <div className="snap-label">{label}</div>
+        <div className="snap-value">{value}</div>
+        {sub}
+      </div>
     </div>
   );
 }
 
-function Agg({ label, value }) {
+function Agg({ label, value, dot }) {
   return (
-    <div>
-      <div className="muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
-      <div style={{ fontSize: '1.15rem', fontWeight: 600 }}>{value}</div>
+    <div className="agg-item">
+      <div className="agg-label">
+        {dot && <span className="agg-dot" style={{ background: dot }} />}
+        {label}
+      </div>
+      <div className="agg-value">{value}</div>
     </div>
   );
+}
+
+function batteryColor(pct) {
+  if (pct == null) return '#64748b';
+  if (pct > 50) return '#16a34a';
+  if (pct > 20) return '#ca8a04';
+  return '#dc2626';
+}
+
+function relTime(iso) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  return `${day}d ago`;
 }
 
 function DeviceDetailSkeleton({ isAdmin }) {
