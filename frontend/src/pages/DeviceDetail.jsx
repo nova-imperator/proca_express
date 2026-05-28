@@ -89,6 +89,8 @@ export default function DeviceDetail() {
         <div className="stat-grid stagger">
           <SnapStat label="Last temperature" value={device.last_temp_i  != null ? `${device.last_temp_i}°C` : '—'} />
           <SnapStat label="Last humidity"    value={device.last_humid_i != null ? `${device.last_humid_i}%` : '—'} />
+          <SnapStat label="Light"            value={device.last_light   != null ? `${device.last_light} lx` : '—'} />
+          <SnapStat label="Shock"            value={device.last_shock   != null ? `${device.last_shock}` : '—'} />
           <SnapStat label="Battery"          value={device.last_battery != null ? `${device.last_battery}%` : '—'} />
           <SnapStat label="Last reported"    value={device.last_seen_at ? new Date(device.last_seen_at).toLocaleString() : 'never'} />
         </div>
@@ -105,6 +107,8 @@ export default function DeviceDetail() {
                 : '—'
             } />
             <Agg label="Avg humidity" value={summary_24h?.avg_humid_i != null ? `${summary_24h.avg_humid_i}%` : '—'} />
+            <Agg label="Peak light"   value={summary_24h?.max_light != null ? `${summary_24h.max_light} lx` : '—'} />
+            <Agg label="Peak shock"   value={summary_24h?.max_shock != null ? `${summary_24h.max_shock}` : '—'} />
             <Agg label="Min battery"  value={summary_24h?.min_battery != null ? `${summary_24h.min_battery}%` : '—'} />
           </div>
         </div>
@@ -141,6 +145,8 @@ export default function DeviceDetail() {
 const METRICS = [
   { key: 'temp_i',   label: 'Temperature', unit: '°C', color: '#2563eb' },
   { key: 'humid_i',  label: 'Humidity',    unit: '%',  color: '#16a34a' },
+  { key: 'light',    label: 'Light',       unit: ' lx', color: '#ca8a04' },
+  { key: 'shock',    label: 'Shock',       unit: '',   color: '#dc2626' },
   { key: 'battery',  label: 'Battery',     unit: '%',  color: '#b45309' },
 ];
 
@@ -217,20 +223,22 @@ function PacketTable({ packets }) {
       <div className="card anim-in anim-d6" style={{ padding: 0 }}>
         <table className="data-table">
           <thead>
-            <tr><th>Time</th><th>Temp</th><th>Humid</th><th>Battery</th><th>Location</th></tr>
+            <tr><th>Time</th><th>Temp</th><th>Humid</th><th>Light</th><th>Shock</th><th>Battery</th><th>Location</th></tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={5} className="muted" style={{ padding: '1.5rem', textAlign: 'center' }}>
+              <tr><td colSpan={7} className="muted" style={{ padding: '1.5rem', textAlign: 'center' }}>
                 {locOnly
                   ? 'No packets in this view contain a location reading.'
-                  : 'No packets recorded yet. Once MindLabs delivers a transmission for this device, it\'ll show up here.'}
+                  : 'No packets recorded yet. Once the next transmission arrives for this device, it\'ll show up here.'}
               </td></tr>
             ) : rows.map((p, i) => (
               <tr key={`${p.packet_time}-${i}`}>
                 <td>{new Date(p.packet_time).toLocaleString()}</td>
                 <td>{p.temp_i != null ? `${p.temp_i}°C` : '—'}</td>
                 <td>{p.humid_i != null ? `${p.humid_i}%` : '—'}</td>
+                <td>{p.light != null ? `${p.light} lx` : '—'}</td>
+                <td>{p.shock != null ? `${p.shock}` : '—'}</td>
                 <td>{p.battery != null ? `${p.battery}%` : '—'}</td>
                 <td>
                   {p.lat != null && p.lng != null ? (
@@ -287,8 +295,8 @@ function DeviceDetailSkeleton({ isAdmin }) {
         </div>
         <div className="card" style={{ padding: 0 }}>
           <table className="data-table">
-            <thead><tr><th>Time</th><th>Temp</th><th>Humid</th><th>Battery</th><th>Location</th></tr></thead>
-            <tbody><SkeletonRow cols={5} /><SkeletonRow cols={5} /><SkeletonRow cols={5} /></tbody>
+            <thead><tr><th>Time</th><th>Temp</th><th>Humid</th><th>Light</th><th>Shock</th><th>Battery</th><th>Location</th></tr></thead>
+            <tbody><SkeletonRow cols={7} /><SkeletonRow cols={7} /><SkeletonRow cols={7} /></tbody>
           </table>
         </div>
       </main>

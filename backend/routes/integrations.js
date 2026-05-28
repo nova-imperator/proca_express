@@ -115,13 +115,14 @@ async function ingestPackets(data) {
       await client.query(
         `INSERT INTO device_packets
            (device_id, packet_time, battery, time_interval, temp_i, temp_p1, humid_i,
-            lat, lng, formatted_address, raw)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            light, shock, lat, lng, formatted_address, raw)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (device_id, packet_time) DO NOTHING`,
         [
           data.id, packetTime,
           numOr(p.battery), numOr(p.timeInterval),
           numOr(p.tempI), numOr(p.tempP1), numOr(p.humidI),
+          numOr(p.alsLux), numOr(p.imuMagnitude),
           numOr(loc.lat), numOr(loc.lng), loc.formatted_address || null,
           p,
         ]
@@ -137,14 +138,17 @@ async function ingestPackets(data) {
            last_battery  = $3,
            last_temp_i   = $4,
            last_humid_i  = $5,
-           last_lat      = COALESCE($6, last_lat),
-           last_lng      = COALESCE($7, last_lng),
-           last_address  = COALESCE($8, last_address)
+           last_light    = $6,
+           last_shock    = $7,
+           last_lat      = COALESCE($8, last_lat),
+           last_lng      = COALESCE($9, last_lng),
+           last_address  = COALESCE($10, last_address)
          WHERE id = $1
            AND (last_seen_at IS NULL OR last_seen_at < to_timestamp($2))`,
         [
           data.id, lt,
           numOr(lp.battery), numOr(lp.tempI), numOr(lp.humidI),
+          numOr(lp.alsLux), numOr(lp.imuMagnitude),
           numOr(lloc.lat), numOr(lloc.lng), lloc.formatted_address || null,
         ]
       );

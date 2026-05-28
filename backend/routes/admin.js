@@ -376,6 +376,7 @@ router.get('/devices/:id', async (req, res) => {
   const dev = await query(
     `SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state, d.org_id,
             d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
+            d.last_light, d.last_shock,
             d.last_lat, d.last_lng, d.last_address, d.raw_meta,
             COALESCE(
               (SELECT json_agg(json_build_object(
@@ -395,7 +396,7 @@ router.get('/devices/:id', async (req, res) => {
   const [packets, agg24h] = await Promise.all([
     query(
       `SELECT packet_time, battery, time_interval, temp_i, temp_p1, humid_i,
-              lat, lng, formatted_address
+              light, shock, lat, lng, formatted_address
          FROM device_packets
         WHERE device_id = $1
         ORDER BY packet_time DESC
@@ -408,6 +409,8 @@ router.get('/devices/:id', async (req, res) => {
               MIN(temp_i)::numeric(10,2) AS min_temp_i,
               MAX(temp_i)::numeric(10,2) AS max_temp_i,
               AVG(humid_i)::numeric(10,2) AS avg_humid_i,
+              MAX(light)::numeric(10,2)   AS max_light,
+              MAX(shock)::numeric(10,2)   AS max_shock,
               MIN(battery)::int           AS min_battery,
               MAX(packet_time)            AS latest_packet
          FROM device_packets

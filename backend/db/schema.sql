@@ -143,6 +143,32 @@ CREATE TABLE IF NOT EXISTS device_packets (
 CREATE INDEX IF NOT EXISTS device_packets_device_time_idx
   ON device_packets(device_id, packet_time DESC);
 
+-- Light (alsLux) + shock (imuMagnitude) sensors. Added after the original
+-- schema, so use ADD COLUMN IF NOT EXISTS + a one-time backfill from the raw
+-- JSONB for packets ingested before these columns existed.
+ALTER TABLE device_packets ADD COLUMN IF NOT EXISTS light NUMERIC;
+ALTER TABLE device_packets ADD COLUMN IF NOT EXISTS shock NUMERIC;
+ALTER TABLE devices        ADD COLUMN IF NOT EXISTS last_light NUMERIC;
+ALTER TABLE devices        ADD COLUMN IF NOT EXISTS last_shock NUMERIC;
+
+-- Backfill packet light/shock from the stored raw payload where unset.
+UPDATE device_packets
+   SET light = NULLIF(raw->>'alsLux', '')::numeric,
+       shock = NULLIF(raw->>'imuMagnitude', '')::numeric
+ WHERE light IS NULL AND shock IS NULL AND raw IS NOT NULL;
+
+-- Backfill each device's last_light / last_shock from its newest packet.
+UPDATE devices d
+   SET last_light = p.light,
+       last_shock = p.shock
+  FROM (
+    SELECT DISTINCT ON (device_id) device_id, light, shock
+      FROM device_packets
+     ORDER BY device_id, packet_time DESC
+  ) p
+ WHERE p.device_id = d.id
+   AND d.last_light IS NULL AND d.last_shock IS NULL;
+
 -- Raw audit log of every webhook envelope we receive. Useful for debugging
 -- and replaying if our packet parser ever has a bug.
 CREATE TABLE IF NOT EXISTS webhook_events (
