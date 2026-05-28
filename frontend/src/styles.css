@@ -46,7 +46,7 @@ body {
 }
 
 /* ========== Layout ========== */
-.container       { max-width: 1120px; margin: 0 auto; padding: 2.25rem 1.5rem; }
+.container       { max-width: 1600px; margin: 0 auto; padding: 2rem 2rem; }
 .container.narrow{ max-width: 460px; }
 .row             { display: flex; gap: 0.75rem; align-items: center; }
 .row-between     { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
@@ -446,7 +446,7 @@ select[disabled] { background-color: var(--surface-2); color: var(--muted); curs
  * ============================================================ */
 .snap-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 0.85rem;
   margin-bottom: 1.5rem;
 }
