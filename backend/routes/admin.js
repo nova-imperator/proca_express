@@ -287,7 +287,7 @@ router.get('/webhook-events', async (req, res) => {
 // GET /api/admin/devices — list of devices with their assigned users array.
 router.get('/devices', async (_req, res) => {
   const { rows } = await query(`
-    SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state,
+    SELECT d.id, d.name, d.type, d.asset_name, d.personal_reference, d.state,
            d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
            d.last_lat, d.last_lng, d.last_address,
            COALESCE(
@@ -303,6 +303,18 @@ router.get('/devices', async (_req, res) => {
      ORDER BY d.updated_at DESC
   `);
   res.json({ devices: rows });
+});
+
+// PATCH /api/admin/devices/:id   body: { name }
+// Set/clear the admin-editable friendly name. Empty string clears it.
+router.patch('/devices/:id', async (req, res) => {
+  const name = req.body?.name == null ? null : String(req.body.name).trim().slice(0, 120) || null;
+  const { rows } = await query(
+    'UPDATE devices SET name = $1 WHERE id = $2 RETURNING id, name',
+    [name, req.params.id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'device_not_found' });
+  res.json({ ok: true, device: rows[0] });
 });
 
 // POST /api/admin/devices/sync — pull from MindLabs and upsert into our DB
@@ -374,7 +386,7 @@ router.post('/devices/sync', async (_req, res) => {
 router.get('/devices/:id', async (req, res) => {
   const id = String(req.params.id);
   const dev = await query(
-    `SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state, d.org_id,
+    `SELECT d.id, d.name, d.type, d.asset_name, d.personal_reference, d.state, d.org_id,
             d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
             d.last_light, d.last_shock,
             d.last_lat, d.last_lng, d.last_address, d.raw_meta,

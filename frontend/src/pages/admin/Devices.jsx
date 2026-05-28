@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AdminNav from '../../components/AdminNav.jsx';
 import { SkeletonRow } from '../../components/Skeleton.jsx';
+import { deviceLabel } from '../../lib/deviceLabel.js';
 import { api } from '../../api';
 
 export default function AdminDevices() {
@@ -12,6 +13,7 @@ export default function AdminDevices() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [managing, setManaging] = useState(null);   // device whose assignments are being managed
+  const [renaming, setRenaming] = useState(null);    // device being renamed
 
   const load = async () => {
     setDevices(null);
@@ -44,7 +46,7 @@ export default function AdminDevices() {
   const filtered = needle && devices
     ? devices.filter((d) => {
         const userText = (d.users || []).map((u) => `${u.name || ''} ${u.email || ''}`).join(' ').toLowerCase();
-        return [d.id, d.asset_name, d.personal_reference, d.type, userText]
+        return [d.id, d.name, d.asset_name, d.personal_reference, d.type, userText]
           .some((v) => (v || '').toLowerCase().includes(needle));
       })
     : devices;
@@ -118,12 +120,8 @@ export default function AdminDevices() {
                         <span className={`status-dot ${fresh ? 'live' : 'stale'}`}
                               title={fresh ? 'Reported in last 24h' : 'No recent report'} />
                         <div>
-                          <div className="device-id-mono">{d.id}</div>
-                          {(d.asset_name || d.personal_reference) && (
-                            <div className="muted device-sub">
-                              {d.asset_name || d.personal_reference}
-                            </div>
-                          )}
+                          <div className="device-name">{deviceLabel(d)}</div>
+                          <div className="muted device-sub device-id-ref">{d.id}</div>
                         </div>
                       </div>
                     </td>
@@ -141,6 +139,10 @@ export default function AdminDevices() {
                               title="View all data" aria-label="View all data">
                           <EyeIcon />
                         </Link>
+                        <button onClick={() => setRenaming(d)} className="icon-btn"
+                                title="Rename device" aria-label="Rename device">
+                          <PencilIcon />
+                        </button>
                         <button onClick={() => setManaging(d)} className="icon-btn"
                                 title="Manage assignments" aria-label="Manage assignments">
                           <UsersIcon />
@@ -163,7 +165,67 @@ export default function AdminDevices() {
           onChanged={() => load()}
         />
       )}
+
+      {renaming && (
+        <RenameDialog
+          device={renaming}
+          onClose={() => setRenaming(null)}
+          onDone={() => { setRenaming(null); load(); }}
+        />
+      )}
     </>
+  );
+}
+
+function RenameDialog({ device, onClose, onDone }) {
+  const dlgRef = useRef(null);
+  const [name, setName] = useState(device.name || '');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => { dlgRef.current?.showModal(); }, []);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setPending(true); setError(null);
+    try {
+      await api.patch(`/api/admin/devices/${device.id}`, { name: name.trim() });
+      onDone();
+    } catch {
+      setError('Failed to save name.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <dialog ref={dlgRef} onClose={onClose}>
+      <form onSubmit={onSubmit} className="card" style={{ gap: '0.85rem', minWidth: 380 }}>
+        <h3 style={{ margin: 0 }}>Rename device</h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.88rem' }}>
+          Friendly name shown to users instead of the device id{' '}
+          <code style={{ fontFamily: 'ui-monospace, monospace' }}>{device.id}</code>.
+          Leave blank to clear.
+        </p>
+        <label>Device name
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Cold room 3 / Truck MH-04"
+            maxLength={120}
+            autoFocus
+          />
+        </label>
+        {error && <div className="notice error">{error}</div>}
+        <menu>
+          <button type="button" className="btn" onClick={() => dlgRef.current?.close()}>Cancel</button>
+          <button type="submit" className="btn primary" disabled={pending}>
+            {pending ? <><span className="spin" /> Saving…</> : 'Save'}
+          </button>
+        </menu>
+      </form>
+    </dialog>
   );
 }
 
@@ -374,6 +436,14 @@ function UsersIcon() {
       <path d="M2.5 19c1-3 3.5-4.5 6.5-4.5s5.5 1.5 6.5 4.5" />
       <circle cx="17" cy="9" r="2.5" />
       <path d="M15 13.5c2.5 0 4.5 1.3 5 3.5" />
+    </svg>
+  );
+}
+function PencilIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
     </svg>
   );
 }

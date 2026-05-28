@@ -8,7 +8,7 @@ const mindlabs = require('../utils/mindlabs');
 // device_assignments join table.
 router.get('/devices', requireUser, async (req, res) => {
   const { rows } = await query(
-    `SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state,
+    `SELECT d.id, d.name, d.type, d.asset_name, d.personal_reference, d.state,
             d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
             d.last_lat, d.last_lng, d.last_address
        FROM devices d
@@ -27,7 +27,7 @@ router.get('/devices', requireUser, async (req, res) => {
 router.get('/devices/:id', requireUser, async (req, res) => {
   const id = String(req.params.id);
   const own = await query(
-    `SELECT d.id, d.type, d.asset_name, d.personal_reference, d.state,
+    `SELECT d.id, d.name, d.type, d.asset_name, d.personal_reference, d.state,
             d.last_seen_at, d.last_battery, d.last_temp_i, d.last_humid_i,
             d.last_light, d.last_shock,
             d.last_lat, d.last_lng, d.last_address, d.raw_meta

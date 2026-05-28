@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import UserNav from '../components/UserNav.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { SkeletonRow } from '../components/Skeleton.jsx';
+import { deviceLabel } from '../lib/deviceLabel.js';
 import { api } from '../api';
 
 export default function Home() {
@@ -47,7 +48,7 @@ export default function Home() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Device ID</th>
+                  <th>Device</th>
                   <th>Status</th>
                   <th>Last temp</th>
                   <th>Battery</th>
@@ -67,7 +68,10 @@ export default function Home() {
                     (Date.now() - new Date(d.last_seen_at).getTime() < 24 * 3600 * 1000);
                   return (
                     <tr key={d.id} className="anim-in" style={{ animationDelay: `${Math.min(i * 25, 280)}ms` }}>
-                      <td style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 500 }}>{d.id}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{deviceLabel(d)}</div>
+                        <div className="muted device-id-ref">{d.id}</div>
+                      </td>
                       <td>
                         <span className={`badge ${fresh ? 'active' : 'disabled'}`} title={fresh ? 'Reported in last 24h' : 'No recent report'}>
                           {fresh ? 'live' : 'stale'}

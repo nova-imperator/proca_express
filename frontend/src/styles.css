@@ -697,6 +697,12 @@ select[disabled] { background-color: var(--surface-2); color: var(--muted); curs
   letter-spacing: -0.01em;
   color: var(--fg);
 }
+/* Friendly device name as the primary label; raw id as a mono reference line. */
+.device-name { font-weight: 600; color: var(--fg); letter-spacing: -0.01em; }
+.device-id-ref {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+}
 .device-sub { font-size: 0.78rem; margin-top: 1px; }
 
 /* User cell — avatar + name + email. */

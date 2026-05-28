@@ -151,6 +151,11 @@ ALTER TABLE device_packets ADD COLUMN IF NOT EXISTS shock NUMERIC;
 ALTER TABLE devices        ADD COLUMN IF NOT EXISTS last_light NUMERIC;
 ALTER TABLE devices        ADD COLUMN IF NOT EXISTS last_shock NUMERIC;
 
+-- Admin-editable friendly label. The raw MindLabs id (e.g. "GF5A001168") is
+-- hard to read, so admins can set a human name ("Cold room 3"). Falls back to
+-- asset_name / personal_reference / id in the UI when unset.
+ALTER TABLE devices        ADD COLUMN IF NOT EXISTS name TEXT;
+
 -- Backfill packet light/shock from the stored raw payload where unset.
 UPDATE device_packets
    SET light = NULLIF(raw->>'alsLux', '')::numeric,

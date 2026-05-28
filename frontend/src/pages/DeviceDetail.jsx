@@ -10,6 +10,7 @@ import useLocalState from '../hooks/useLocalState.js';
 import {
   ThermometerIcon, DropletIcon, SunIcon, ShockIcon, BatteryIcon, ClockIcon,
 } from '../components/SensorIcons.jsx';
+import { deviceLabel } from '../lib/deviceLabel.js';
 import { api } from '../api';
 
 // Dual-mode device detail page.
@@ -63,9 +64,9 @@ export default function DeviceDetail() {
             <p className="muted" style={{ margin: 0 }}>
               <Link to={backTo} className="inline-link">← {backLabel}</Link>
             </p>
-            <h1 className="page-title" style={{ fontFamily: 'ui-monospace, monospace' }}>{device.id}</h1>
+            <h1 className="page-title">{deviceLabel(device)}</h1>
             <p className="page-sub" style={{ marginBottom: 0 }}>
-              {device.asset_name || device.personal_reference || device.type || 'Tracker'}
+              <span style={{ fontFamily: 'ui-monospace, monospace' }}>{device.id}</span>
               <span className={`badge ${fresh ? 'active' : 'disabled'}`} style={{ marginLeft: 8 }}>
                 {fresh ? 'live' : 'stale'}
               </span>
