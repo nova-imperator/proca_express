@@ -48,7 +48,7 @@ export default function Home() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Device</th>
+                  <th>Shipment name</th>
                   <th>Status</th>
                   <th>Last temp</th>
                   <th>Battery</th>

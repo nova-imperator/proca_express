@@ -93,7 +93,7 @@ export default function AdminDevices() {
           <table className="data-table devices-table">
             <thead>
               <tr>
-                <th>Device</th>
+                <th>Shipment name</th>
                 <th>Last seen</th>
                 <th>Assigned to</th>
                 <th style={{ width: 1, whiteSpace: 'nowrap' }}>Actions</th>
